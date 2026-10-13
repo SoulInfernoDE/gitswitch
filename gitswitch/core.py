@@ -53,11 +53,13 @@ class Profile:
 # --- running commands -------------------------------------------------------
 
 
-def _run(args: list[str], check: bool = True, timeout: int = 30) -> subprocess.CompletedProcess:
+def _run(
+    args: list[str], check: bool = True, timeout: int = 30, stdin_text: str | None = None
+) -> subprocess.CompletedProcess:
     try:
-        proc = subprocess.run(
-            args, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL
-        )
+        # subprocess.run() rejects ``input`` together with ``stdin``.
+        source = {"stdin": subprocess.DEVNULL} if stdin_text is None else {"input": stdin_text}
+        proc = subprocess.run(args, capture_output=True, text=True, timeout=timeout, **source)
     except FileNotFoundError:
         raise GhError(_("'{command}' was not found in PATH").format(command=args[0])) from None
     except subprocess.TimeoutExpired:
@@ -269,6 +271,27 @@ def switch_account(user: str, host: str | None = None, sync_identity: bool | Non
         except GhError as error:
             result["warning"] = str(error)
     return result
+
+
+def normalize_host(text: str) -> str:
+    """Turn what people paste as a server address into a bare hostname."""
+    host = text.strip().lower()
+    host = host.split("://", 1)[-1]
+    return host.split("/", 1)[0]
+
+
+def token_page(host: str) -> str:
+    """Page where a personal access token with the scopes gh needs can be created."""
+    return f"https://{host}/settings/tokens/new?scopes=repo,read:org,gist,workflow&description=Git-Switch"
+
+
+def device_page(host: str) -> str:
+    return f"https://{host}/login/device"
+
+
+def login_with_token(host: str, token: str) -> None:
+    """Add an account from a personal access token (``gh auth login --with-token``)."""
+    _run(["gh", "auth", "login", "--hostname", host, "--with-token"], stdin_text=token.strip() + "\n")
 
 
 def logout_account(account: Account) -> None:

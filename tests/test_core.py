@@ -77,6 +77,20 @@ class HostsFileTest(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
         self.assertTrue(set(core.REQUIRED_SCOPES) <= set(names))
 
+    def test_normalize_host(self):
+        self.assertEqual(core.normalize_host(" https://GitHub.Example.com/login "), "github.example.com")
+        self.assertEqual(core.normalize_host("github.com"), "github.com")
+        self.assertEqual(core.normalize_host("  "), "")
+
+    def test_login_with_token_passes_token_on_stdin(self):
+        with mock.patch.object(core.subprocess, "run") as run:
+            run.return_value = mock.Mock(returncode=0, stdout="", stderr="")
+            core.login_with_token("github.com", " secret ")
+        args, kwargs = run.call_args
+        self.assertEqual(args[0], ["gh", "auth", "login", "--hostname", "github.com", "--with-token"])
+        self.assertEqual(kwargs["input"], "secret\n")
+        self.assertNotIn("stdin", kwargs)
+
     def test_noreply_email(self):
         profile = core.Profile(valid=True, login="alice", user_id=42)
         self.assertEqual(core.noreply_email("github.com", profile), "42+alice@users.noreply.github.com")

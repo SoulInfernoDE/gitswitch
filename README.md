@@ -23,8 +23,8 @@ through the bundled MCP server.
 - Lists all accounts per host, with avatar, active marker and a live check
   whether the stored token still works
 - One-click switching (`gh auth switch`)
-- Add accounts or re-authenticate expired ones with the browser device flow –
-  no terminal needed
+- Add accounts through a guided dialog: GitHub.com or your own server, sign in
+  in the browser or with an access token – no terminal needed
 - Sign out of single accounts
 - Shows the permissions (scopes) of each token; add or remove them by ticking
   boxes in a list with descriptions (`gh auth refresh`)
@@ -46,14 +46,14 @@ Requires `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 and libadwaita ≥ 1.4.
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.2.3_all.deb
+sudo apt install ./gitswitch_0.2.4_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.2.3-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.2.4-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.

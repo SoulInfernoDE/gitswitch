@@ -420,21 +420,69 @@ class Window(Adw.ApplicationWindow):
     # --- sign-in -----------------------------------------------------------
 
     def ask_host(self) -> None:
-        entry = Adw.EntryRow(title=_("Host"), text=core.DEFAULT_HOST, activates_default=True)
-        box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
-        box.add_css_class("boxed-list")
-        box.append(entry)
-        dialog = Adw.MessageDialog(transient_for=self, heading=_("Add account"), extra_child=box)
+        """Dialog for adding an account: where it lives and how to sign in."""
+        places = Adw.ComboRow(
+            title=_("Account on"),
+            model=Gtk.StringList.new([_("GitHub.com"), _("Own server")]),
+        )
+        server = Adw.EntryRow(title=_("Address, e.g. github.example.com"), visible=False)
+        methods = Adw.ComboRow(
+            title=_("Sign-in"),
+            model=Gtk.StringList.new([_("In the browser (recommended)"), _("With an access token")]),
+        )
+        token = Adw.PasswordEntryRow(title=_("Access token"), visible=False)
+        create = Gtk.Button(
+            icon_name="web-browser-symbolic", valign=Gtk.Align.CENTER, tooltip_text=_("Create a token on GitHub")
+        )
+        create.add_css_class("flat")
+        token.add_suffix(create)
+        rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        rows.add_css_class("boxed-list")
+        rows.set_size_request(420, -1)
+        for row in (places, server, methods, token):
+            rows.append(row)
+
+        dialog = Adw.MessageDialog(transient_for=self, heading=_("Add account"), extra_child=rows)
         dialog.add_response("cancel", _("Cancel"))
         dialog.add_response("login", _("Sign in"))
         dialog.set_response_appearance("login", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_default_response("login")
 
-        def on_response(_dialog, response):
-            host = entry.get_text().strip()
-            if response == "login" and host:
-                self.login(host)
+        def host() -> str:
+            return core.normalize_host(server.get_text()) if places.get_selected() else core.DEFAULT_HOST
 
+        def update(*_args):
+            with_token = methods.get_selected() == 1
+            server.set_visible(places.get_selected() == 1)
+            token.set_visible(with_token)
+            if with_token:
+                dialog.set_body(_("Paste a personal access token. The button next to the field opens the page to create one."))
+            else:
+                dialog.set_body(
+                    _("Your browser opens GitHub, where you confirm a one-time code. No password is entered here.")
+                )
+            dialog.set_response_enabled("login", bool(host()) and (not with_token or bool(token.get_text().strip())))
+
+        def on_token_done(_result, error):
+            if error:
+                self.fail(error)
+            else:
+                self.toast(_("Signed in to {host}").format(host=host()), "success")
+            self.reload(recheck=True)
+
+        def on_response(_dialog, response):
+            if response != "login":
+                return
+            if methods.get_selected() == 1:
+                secret = token.get_text()
+                run_async(lambda: core.login_with_token(host(), secret), on_token_done)
+            else:
+                self.login(host())
+
+        create.connect("clicked", lambda *_args: Gio.AppInfo.launch_default_for_uri(core.token_page(host()), None))
+        for row, signal in ((places, "notify::selected"), (methods, "notify::selected"), (server, "changed"), (token, "changed")):
+            row.connect(signal, update)
+        update()
         dialog.connect("response", on_response)
         dialog.present()
 
@@ -444,8 +492,11 @@ class Window(Adw.ApplicationWindow):
         copy_button = Gtk.Button(label=_("Copy code"), halign=Gtk.Align.CENTER, sensitive=False)
         copy_button.connect("clicked", lambda *_args: self.copy(code_label.get_text()))
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        open_button = Gtk.LinkButton(uri=core.device_page(host), label=_("Open the sign-in page again"))
+        open_button.set_halign(Gtk.Align.CENTER)
         box.append(code_label)
         box.append(copy_button)
+        box.append(open_button)
         dialog = Adw.MessageDialog(
             transient_for=self,
             heading=(_("Change permissions") if refresh else _("Sign in to {host}").format(host=host)),
@@ -458,7 +509,8 @@ class Window(Adw.ApplicationWindow):
         def on_code(code):
             code_label.set_text(code)
             copy_button.set_sensitive(True)
-            dialog.set_body(_("Enter this code in the browser window that just opened:"))
+            self.get_clipboard().set(code)
+            dialog.set_body(_("Paste this code in the browser page that just opened. It is already in the clipboard."))
 
         def on_done(status, output):
             if not state["open"]:
