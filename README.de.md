@@ -38,6 +38,10 @@ heraus über den mitgelieferten MCP-Server.
   (verwendet die GitHub-noreply-Adresse des Kontos)
 - Übernimmt Änderungen von außen (`gh` CLI, MCP-Server) sofort
 - MCP-Server, damit Claude Code Konten auflisten und wechseln kann
+- Leak-Prüfung: findet Tokens, Adressen eigener Server, die echte
+  E-Mail-Adresse und ähnliche private Daten, bevor sie veröffentlicht werden
+  (siehe unten)
+- Sucht beim Start nach einer neueren Version, im Fenster und im MCP-Server
 - Dezente Soundeffekte für Wechsel, Anmeldung und Fehler (abschaltbar)
 - Oberfläche auf Deutsch und Englisch
 
@@ -54,14 +58,14 @@ Schlüsselbund (GNOME Keyring, KWallet o. Ä.).
 [Release-Seite](../../releases) herunterladen und installieren:
 
 ```bash
-sudo apt install ./gitswitch_0.4.0_all.deb
+sudo apt install ./gitswitch_0.5.0_all.deb
 ```
 
 **Andere Distributionen** – PyGObject, GTK 4 und libadwaita über den
 Paketmanager installieren, dann:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.4.0-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.5.0-py3-none-any.whl
 ```
 
 **Aus dem Quellcode** – `python3 -m gitswitch` in einem Checkout.
@@ -72,6 +76,7 @@ pipx install --system-site-packages gitswitch-0.4.0-py3-none-any.whl
 gitswitch                 # Fenster öffnen
 gitswitch list            # Konten als JSON
 gitswitch switch <user>   # Wechsel aus der Shell
+gitswitch leak-check      # prüfen, was der nächste Push veröffentlichen würde
 ```
 
 Die Sprache richtet sich nach der Systemsprache.
@@ -121,6 +126,7 @@ Danach Claude Code neu starten. Diese Tools stehen dann zur Verfügung:
 | `forgejo_api_get` | Aus der REST-API eines Forgejo-/Gitea-Servers lesen, wie `gh api` für GitHub |
 | `forgejo_api_write` | Über diese API etwas ändern: Issues, Pull Requests, Releases, Spiegel-Abgleich … |
 | `forgejo_upload_release_asset` | Eine lokale Datei an ein Release anhängen |
+| `check_for_leaks` | Text, Dateien oder den nächsten Push vor dem Veröffentlichen auf private Daten prüfen |
 
 Die Namen der ersten beiden Tools stammen aus den reinen GitHub-Versionen;
 beide decken auch Forgejo- und Gitea-Konten ab. Der Wechsel gilt global: Er ändert das Konto
@@ -133,6 +139,42 @@ Schreiben sind getrennte Tools, damit sich Lesen dauerhaft erlauben lässt,
 während Änderungen weiterhin nachfragen. Anfragen gehen nur an einen
 angemeldeten Server, Pfade können dessen API nicht verlassen, und Endpunkte,
 die Zugangsdaten ausstellen, sind gesperrt.
+
+## Leak-Prüfung
+
+Git-Switch weiß, was auf deinem Rechner privat ist, und kann genau danach in
+Inhalten suchen, die veröffentlicht werden sollen:
+
+| Stufe | Was gefunden wird |
+| --- | --- |
+| `secret` | Die aktiven Tokens der angemeldeten Konten, andere Zugriffstokens, private Schlüssel |
+| `private` | Adressen deiner selbst betriebenen Server, deine echte Git-E-Mail-Adresse, Pfade in deinem Home-Verzeichnis |
+| `review` | Andere E-Mail-Adressen, der Rechnername, private Netzwerkadressen, interne Hostnamen |
+
+```bash
+gitswitch leak-check                 # vorgemerkte Änderungen und noch nicht gepushte Commits
+gitswitch leak-check README.md docs  # Dateien oder Ordner
+```
+
+Der Befehl endet mit Status 1, wenn er etwas findet, und eignet sich damit als
+git-`pre-push`-Hook. In Claude Code weist der MCP-Server das Modell an,
+`check_for_leaks` auszuführen, bevor es etwas committet, pusht oder
+veröffentlicht, und die Forgejo-Schreib-Tools lehnen Anfragen ab, die ein
+Geheimnis enthalten. Einträge unter `leak_allow` in
+`~/.config/gitswitch/config.json` werden ignoriert, zum Beispiel ein Server,
+der öffentlich sein soll.
+
+Die Prüfung liest nur Text: Was ein Bild wie ein Screenshot zeigt, kann sie
+nicht erkennen.
+
+## Updates
+
+Beim Start fragen Fenster und MCP-Server GitHub nach dem neuesten Release,
+höchstens alle 12 Stunden und ohne ein Konto zu verwenden. Das Fenster zeigt
+ein Banner; der MCP-Server erwähnt es in seinen Ergebnissen und bemerkt
+außerdem, wenn er nach einem Upgrade noch eine ältere Version ausführt.
+Abschalten lässt es sich mit **Beim Start nach Updates suchen**. Installiert
+wird nichts automatisch.
 
 ## Entwicklung
 

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from gitswitch import core, forge, mcp
+from gitswitch import core, forge, leaks, mcp, update
 
 HOSTS = """\
 github.com:
@@ -125,6 +125,7 @@ class ForgeTest(unittest.TestCase):
             mock.patch.object(forge, "clear_token", lambda host, user: self.keyring.pop((host, user), None)),
             mock.patch.object(forge, "_profile", return_value=profile),
             mock.patch.object(core, "_run"),
+            mock.patch.object(leaks, "gather", return_value=leaks.Context()),
         ]
         for patcher in patches:
             patcher.start()
@@ -229,6 +230,107 @@ class ApiTest(unittest.TestCase):
         self.assertIsNone(core._NoRedirect().redirect_request(None, None, 302, "Found", {}, "https://evil.example"))
 
 
+class LeakTest(unittest.TestCase):
+    def setUp(self):
+        self.context = leaks.Context(
+            tokens={"abcdef0123456789abcdef0123456789abcdef01": "dana@git.example.com"},
+            hosts={"git.example.com"},
+            emails={"dana@real-mail.example.net"},
+            home="/home/dana",
+            machine="danas-laptop",
+        )
+
+    def kinds(self, text):
+        return [finding.kind for finding in leaks.scan_text(text, "t", self.context)]
+
+    def test_finds_what_is_private_here(self):
+        self.assertEqual(self.kinds("see https://git.example.com/dana/x"), ["private-server"])
+        self.assertEqual(self.kinds("token abcdef0123456789abcdef0123456789abcdef01"), ["live-token"])
+        self.assertEqual(self.kinds("GH_TOKEN=ghp_" + "a" * 36), ["token"])
+        self.assertEqual(self.kinds("-----BEGIN OPENSSH PRIVATE KEY-----"), ["private-key"])
+        self.assertEqual(self.kinds("Dana <dana@real-mail.example.net>"), ["own-email"])
+        self.assertEqual(self.kinds("mail bob@company.io"), ["email"])
+        self.assertEqual(self.kinds("see /home/dana/projects"), ["home-path"])
+        self.assertEqual(self.kinds("built on danas-laptop"), ["machine-name"])
+        self.assertEqual(self.kinds("http://192.168.1.20:3000 and nas.local"), ["private-address", "internal-host"])
+
+    def test_leaves_public_things_alone(self):
+        for text in (
+            "https://github.com/dana/x",
+            "7+dana@users.noreply.github.com and dana@noreply.git.example.org",
+            "git@github.com:dana/x.git",
+            "commit 25cd9b7f51af22f3669200591f28d7438997f603",
+            "listen on 127.0.0.1 or 8.8.8.8, version 1.2.3.4567",
+            "someone@example.com",
+        ):
+            self.assertEqual(self.kinds(text), [], text)
+
+    def test_secrets_are_masked_and_allow_list_is_honoured(self):
+        finding = leaks.scan_text("x abcdef0123456789abcdef0123456789abcdef01", "t", self.context)[0]
+        self.assertNotIn("abcdef0123456789abcdef", finding.excerpt)
+        self.context.allow = ["git.example.com"]
+        self.assertEqual(self.kinds("https://git.example.com/dana/x"), [])
+
+    def test_repository_scan_covers_unpublished_commits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            def git(*args):
+                env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull}
+                core.subprocess.run(["git", "-C", directory, *args], check=True, capture_output=True, env=env)
+
+            git("init", "-q")
+            Path(directory, "README.md").write_text("Mirror: https://git.example.com/dana/x\n")
+            git("add", "-A")
+            git("-c", "user.name=Dana", "-c", "user.email=dana@real-mail.example.net", "commit", "-q", "-m", "init")
+            found = leaks.report(leaks.scan_repository(directory, self.context))["findings"]
+        self.assertEqual({f["kind"] for f in found}, {"private-server", "own-email"})
+
+    def test_mcp_write_refuses_secrets(self):
+        with mock.patch.object(leaks, "gather", return_value=self.context), mock.patch.object(forge, "api") as api:
+            call = {
+                "name": "forgejo_api_write",
+                "arguments": {"method": "POST", "path": "/repos/a/b/issues", "body": {"body": "ghp_" + "b" * 36}},
+            }
+            result = mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": call})["result"]
+        self.assertTrue(result["isError"])
+        api.assert_not_called()
+
+
+class UpdateTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        patcher = mock.patch.dict(os.environ, {"XDG_CACHE_HOME": self.dir.name, "XDG_CONFIG_HOME": self.dir.name})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_newer_release_is_reported_and_cached(self):
+        newer = {"version": "99.0.0", "url": "https://example.com/r"}
+        with mock.patch.object(update, "_fetch_latest", return_value=newer) as fetch:
+            self.assertEqual(update.check(), newer)
+            self.assertEqual(update.check(), newer)
+        fetch.assert_called_once()
+        self.assertEqual(update.cached(), newer)
+        self.assertTrue(any("99.0.0" in notice for notice in mcp.notices()))
+
+    def test_same_version_and_failures_report_nothing(self):
+        current = {"version": update.__version__, "url": "u"}
+        with mock.patch.object(update, "_fetch_latest", return_value=current):
+            self.assertIsNone(update.check())
+        with mock.patch.object(update, "_fetch_latest", side_effect=OSError):
+            self.assertIsNone(update.check(force=True))
+
+    def test_switch_turns_the_check_off(self):
+        core.save_settings({"check_updates": False})
+        with mock.patch.object(update, "_fetch_latest") as fetch:
+            self.assertIsNone(update.check())
+        fetch.assert_not_called()
+
+    def test_outdated_process_is_noticed(self):
+        with mock.patch.object(update, "installed_version", return_value="99.0.0"):
+            self.assertEqual(update.outdated_process(), "99.0.0")
+        self.assertIsNone(update.outdated_process())
+
+
 class CatalogTest(unittest.TestCase):
     LOCALE_DIR = Path(core.__file__).parent / "locale"
 
@@ -261,6 +363,7 @@ class McpTest(unittest.TestCase):
                 "forgejo_api_get",
                 "forgejo_api_write",
                 "forgejo_upload_release_asset",
+                "check_for_leaks",
             ],
         )
 

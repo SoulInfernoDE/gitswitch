@@ -13,7 +13,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import __version__, core, forge, sound  # noqa: E402
+from . import __version__, core, forge, sound, update  # noqa: E402
 from .i18n import _  # noqa: E402
 
 APP_ID = ICON_NAME = "dev.gitswitch.GitSwitch"
@@ -64,8 +64,10 @@ class Window(Adw.ApplicationWindow):
         self.stack.add_named(self.status, "status")
         self.toasts = Adw.ToastOverlay(child=self.stack)
 
+        self.update_banner = Adw.Banner(button_label=_("Show"))
         view = Adw.ToolbarView(content=self.toasts)
         view.add_top_bar(header)
+        view.add_top_bar(self.update_banner)
         self.set_content(view)
 
         self.build_options()
@@ -658,7 +660,16 @@ class Window(Adw.ApplicationWindow):
         sound_row = Adw.SwitchRow(title=_("Sound effects"), active=bool(self.settings["sounds"]))
         sound_row.connect("notify::active", self.on_sounds_toggled)
         self.options.add(sound_row)
+
+        update_row = Adw.SwitchRow(
+            title=_("Check for updates on start"),
+            subtitle=_("Asks GitHub for the latest release, without any account"),
+            active=bool(self.settings["check_updates"]),
+        )
+        update_row.connect("notify::active", self.on_updates_toggled)
+        self.options.add(update_row)
         self.page.add(self.options)
+        self.look_for_update()
 
     def update_identity_row(self) -> None:
         name, email = core.get_git_identity()
@@ -686,6 +697,25 @@ class Window(Adw.ApplicationWindow):
             self.update_identity_row()
 
         run_async(lambda: core.sync_git_identity(accounts[0], self.profiles.get(accounts[0])), done)
+
+    def look_for_update(self) -> None:
+        def done(latest, _error):
+            self.update_banner.set_revealed(bool(latest))
+            if not latest:
+                return
+            self.update_banner.set_title(_("Git-Switch {version} is available").format(version=latest["version"]))
+            if not getattr(self, "update_url", None):
+                self.update_banner.connect(
+                    "button-clicked", lambda *_args: Gio.AppInfo.launch_default_for_uri(self.update_url, None)
+                )
+            self.update_url = latest["url"]
+
+        run_async(update.check, done)
+
+    def on_updates_toggled(self, row, _pspec) -> None:
+        self.settings["check_updates"] = row.get_active()
+        core.save_settings(self.settings)
+        self.look_for_update()
 
     def on_sounds_toggled(self, row, _pspec) -> None:
         self.settings["sounds"] = row.get_active()

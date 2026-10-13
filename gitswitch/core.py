@@ -264,7 +264,7 @@ def _settings_file() -> Path:
 
 
 def load_settings() -> dict:
-    settings = {"sync_git_identity": False, "sounds": True}
+    settings = {"sync_git_identity": False, "sounds": True, "check_updates": True, "leak_allow": []}
     try:
         stored = json.loads(_settings_file().read_text(encoding="utf-8"))
     except (OSError, ValueError):

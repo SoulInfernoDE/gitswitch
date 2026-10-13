@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 
-from . import __version__, core, forge
+from . import __version__, core, forge, leaks, update
 from .i18n import _
 
 PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
@@ -104,15 +105,85 @@ TOOLS = [
         },
         "annotations": {"readOnlyHint": False},
     },
+    {
+        "name": "check_for_leaks",
+        "description": _(
+            "Check content for private data before it is published: live tokens of the signed-in accounts, "
+            "other access tokens and private keys, addresses of the user's self-hosted servers, the real git "
+            "e-mail address, paths in the home directory, the computer name and internal network addresses. "
+            "Call it before committing, pushing, creating a release, opening an issue or pull request, or "
+            "putting text into a README. Pass 'repository' to check what the next push would publish, "
+            "'paths' for files or folders, or 'text' for a draft. Findings of severity 'secret' must be "
+            "removed; discuss 'private' and 'review' findings with the user instead of publishing them."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": _("Text to check, for example a draft README or message")},
+                "paths": {"type": "array", "items": {"type": "string"}, "description": _("Files or folders to check")},
+                "repository": {
+                    "type": "string",
+                    "description": _("Git working copy; checks staged changes and commits not yet on the upstream"),
+                },
+            },
+            "additionalProperties": False,
+        },
+        "annotations": {"readOnlyHint": True},
+    },
 ]
 
 # Larger results are cut so one call cannot flood the conversation.
 MAX_RESULT_CHARS = 60000
 
 
+def instructions() -> str:
+    """Guidance the client shows the model for the whole session."""
+    text = _(
+        "Before publishing anything on the user's behalf (commit, push, release, issue, pull request, README), "
+        "run check_for_leaks on it and resolve the findings with the user."
+    )
+    return "\n".join([text, *notices()])
+
+
+def notices() -> list[str]:
+    """Things the user should hear about: a newer release, or this server being outdated."""
+    found = []
+    installed = update.outdated_process()
+    if installed:
+        found.append(
+            _("Git-Switch was updated to {version}; restart the client so this MCP server runs the new version.").format(
+                version=installed
+            )
+        )
+    latest = update.cached() if core.load_settings().get("check_updates") else None
+    if latest:
+        found.append(_("Git-Switch {version} is available: {url}").format(**latest))
+    return found
+
+
+def _refuse_secrets(*values: object) -> None:
+    """Stop a write that would carry a token or private key to a server."""
+    text = "\n".join(json.dumps(value, ensure_ascii=False) for value in values if value is not None)
+    secrets = [f for f in leaks.scan_text(text, "request") if f.severity == leaks.SECRET]
+    if secrets:
+        raise core.GhError(_("Not sent: the request contains a secret ({detail})").format(detail=secrets[0].detail))
+
+
 def _call_tool(name: str, arguments: dict) -> object:
     if name == "list_github_accounts":
-        return {"accounts": core.describe_accounts()}
+        result = {"accounts": core.describe_accounts()}
+        if notices():
+            result["notices"] = notices()
+        return result
+    if name == "check_for_leaks":
+        context, found = leaks.gather(), []
+        if isinstance(arguments.get("text"), str):
+            found += leaks.scan_text(arguments["text"], "text", context)
+        if isinstance(arguments.get("paths"), list):
+            found += leaks.scan_paths([str(path) for path in arguments["paths"]], context)
+        if isinstance(arguments.get("repository"), str):
+            found += leaks.scan_repository(arguments["repository"], context)
+        return leaks.report(found)
     if name == "switch_github_account":
         user = arguments.get("user")
         if not isinstance(user, str) or not user:
@@ -122,10 +193,13 @@ def _call_tool(name: str, arguments: dict) -> object:
         text = {key: value for key, value in arguments.items() if isinstance(value, str)}
         host = text.get("hostname")
         if name == "forgejo_upload_release_asset":
+            if leaks.report(leaks.scan_paths([text.get("file", "")]))["counts"][leaks.SECRET]:
+                raise core.GhError(_("Not sent: the file contains a secret."))
             return forge.upload_release_asset(text.get("repository", ""), text.get("tag", ""), text.get("file", ""), host)
         method = "GET" if name == "forgejo_api_get" else text.get("method", "").upper()
         if name == "forgejo_api_write" and method not in ("POST", "PUT", "PATCH", "DELETE"):
             raise core.GhError(_("Unsupported method: {method}").format(method=method))
+        _refuse_secrets(text.get("path"), arguments.get("body"))
         return forge.api(method, text.get("path", ""), arguments.get("body"), host)
     raise core.GhError(_("Unknown tool: {name}").format(name=name))
 
@@ -148,6 +222,7 @@ def handle(message: dict) -> dict | None:
                 "protocolVersion": requested if requested in PROTOCOL_VERSIONS else PROTOCOL_VERSIONS[0],
                 "capabilities": {"tools": {}},
                 "serverInfo": {"name": "gitswitch", "version": __version__},
+                "instructions": instructions(),
             }
         )
     if method == "ping":
@@ -167,6 +242,8 @@ def handle(message: dict) -> dict | None:
 
 
 def main() -> int:
+    # Refreshes the cached answer in the background; the result shows up as a notice.
+    threading.Thread(target=update.check, daemon=True).start()
     for line in sys.stdin:
         if not line.strip():
             continue

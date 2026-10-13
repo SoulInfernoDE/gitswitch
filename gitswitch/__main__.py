@@ -20,6 +20,9 @@ def main(argv: list[str] | None = None) -> int:
     switch.add_argument("user")
     switch.add_argument("--hostname")
     commands.add_parser("mcp", help=_("run the MCP server on stdio"))
+    check = commands.add_parser("leak-check", help=_("check files or a git working copy for private data"))
+    check.add_argument("paths", nargs="*")
+    check.add_argument("--repository", help=_("check what the next push of this working copy would publish"))
     credential = commands.add_parser("git-credential", help=_("answer git's credential requests for Forgejo accounts"))
     credential.add_argument("operation")
     args = parser.parse_args(argv)
@@ -33,6 +36,21 @@ def main(argv: list[str] | None = None) -> int:
 
         sys.stdout.write(forge.credential_helper(args.operation, sys.stdin.read()))
         return 0
+    if args.command == "leak-check":
+        from . import leaks
+
+        try:
+            context = leaks.gather()
+            found = leaks.scan_paths(args.paths, context)
+            found += leaks.scan_repository(args.repository or ".", context) if args.repository or not args.paths else []
+        except core.GhError as error:
+            print(_("gitswitch: {error}").format(error=error), file=sys.stderr)
+            return 2
+        result = leaks.report(found)
+        for finding in result["findings"]:
+            print(f"{finding['severity']:8} {finding['where']}: {finding['detail']}\n         {finding['excerpt']}")
+        print(_("No private data found.") if result["clean"] else _("{count} finding(s).").format(count=len(result["findings"])))
+        return 0 if result["clean"] else 1
     if args.command in ("list", "switch"):
         try:
             if args.command == "list":

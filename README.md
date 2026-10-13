@@ -38,6 +38,9 @@ through the bundled MCP server.
   active account (uses the account's GitHub noreply address)
 - Follows changes made elsewhere (the `gh` CLI, the MCP server) immediately
 - MCP server so Claude Code can list and switch accounts
+- Leak check: finds tokens, addresses of your own servers, your real e-mail
+  address and similar private data before they are published (see below)
+- Looks for a newer version on start, in the window and in the MCP server
 - Soft sound effects for switching, sign-in and errors (can be turned off)
 - English and German interface
 
@@ -54,14 +57,14 @@ Forgejo/Gitea accounts additionally need libsecret and a running keyring
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.4.0_all.deb
+sudo apt install ./gitswitch_0.5.0_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.4.0-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.5.0-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.
@@ -72,6 +75,7 @@ pipx install --system-site-packages gitswitch-0.4.0-py3-none-any.whl
 gitswitch                 # open the window
 gitswitch list            # accounts as JSON
 gitswitch switch <user>   # switch from the shell
+gitswitch leak-check      # check what the next push would publish
 ```
 
 ## Forgejo and Gitea
@@ -118,6 +122,7 @@ Restart Claude Code afterwards. These tools become available:
 | `forgejo_api_get` | Read from the REST API of a Forgejo/Gitea server, like `gh api` for GitHub |
 | `forgejo_api_write` | Change things through that API: issues, pull requests, releases, mirror sync … |
 | `forgejo_upload_release_asset` | Attach a local file to a release |
+| `check_for_leaks` | Check text, files or the next push for private data before publishing |
 
 The names of the first two tools date from the GitHub-only versions; both
 cover Forgejo and Gitea accounts too. Switching is global: it changes the account for every
@@ -128,6 +133,40 @@ these servers. They act as the active account of the server. Reading and
 writing are separate tools so that reading can be allowed permanently while
 changes still ask for confirmation. Requests only go to a signed-in server,
 paths cannot leave its API, and endpoints that issue credentials are blocked.
+
+## Leak check
+
+Git-Switch knows what is private on your machine, so it can look for exactly
+that in content that is about to be published:
+
+| Severity | What is found |
+| --- | --- |
+| `secret` | The live tokens of the signed-in accounts, other access tokens, private keys |
+| `private` | Addresses of your self-hosted servers, your real git e-mail address, paths in your home directory |
+| `review` | Other e-mail addresses, the computer name, private network addresses, internal host names |
+
+```bash
+gitswitch leak-check                 # staged changes and commits not yet pushed
+gitswitch leak-check README.md docs  # files or folders
+```
+
+The command exits with status 1 if it finds something, so it works as a git
+`pre-push` hook. In Claude Code the MCP server tells the model to run
+`check_for_leaks` before it commits, pushes or publishes anything, and the
+Forgejo write tools refuse requests that contain a secret. Entries listed
+under `leak_allow` in `~/.config/gitswitch/config.json` are ignored, for
+example a server that is meant to be public.
+
+The check reads text only: it cannot see what an image such as a screenshot
+shows.
+
+## Updates
+
+On start the window and the MCP server ask GitHub for the latest release, at
+most every 12 hours and without using any account. The window shows a banner;
+the MCP server mentions it in its results and also notices when it is still
+running an older version after an upgrade. Turn it off with **Check for
+updates on start**. Nothing is installed automatically.
 
 ## Development
 
