@@ -131,6 +131,7 @@ python3 -m unittest discover -s tests
 packaging/make-sounds.py   # Soundeffekte neu erzeugen
 packaging/update-translations.sh   # Programmtexte extrahieren, Kataloge aktualisieren und kompilieren
 packaging/build-deb.sh
+packaging/mirror-releases.py <github owner/repo> <forgejo host> <forgejo owner/repo>   # Releases auf einen Forgejo-Spiegel kopieren
 ```
 
 Programmtexte liegen als gettext-Kataloge unter `gitswitch/locale/`; Englisch
