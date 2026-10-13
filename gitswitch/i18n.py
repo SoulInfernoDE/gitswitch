@@ -43,8 +43,8 @@ _DE = {
     "No accounts yet": "Noch keine Konten",
     "Sign in to GitHub to get started.": "Melde dich bei GitHub an, um loszulegen.",
     "GitHub CLI not found": "GitHub CLI nicht gefunden",
-    "Install gh from cli.github.com and start gitswitch again.": (
-        "Installiere gh von cli.github.com und starte gitswitch erneut."
+    "Install gh from cli.github.com and start Git-Switch again.": (
+        "Installiere gh von cli.github.com und starte Git-Switch erneut."
     ),
     "Host": "Host",
     "Sign in": "Anmelden",

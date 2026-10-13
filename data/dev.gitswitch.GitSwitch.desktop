@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=gitswitch
+Name=Git-Switch
 GenericName=GitHub Account Switcher
 GenericName[de]=GitHub-Kontowechsler
 Comment=Switch between GitHub CLI accounts

@@ -34,7 +34,7 @@ def run_async(func, callback) -> None:
 
 class Window(Adw.ApplicationWindow):
     def __init__(self, app: Adw.Application):
-        super().__init__(application=app, title="gitswitch", default_width=460, default_height=560)
+        super().__init__(application=app, title="Git-Switch", default_width=460, default_height=560)
         self.settings = core.load_settings()
         self.profiles: dict[core.Account, core.Profile] = {}
         self.avatars: dict[str, Gdk.Texture] = {}
@@ -116,7 +116,7 @@ class Window(Adw.ApplicationWindow):
 
         if not core.gh_available():
             self.status.set_title(_("GitHub CLI not found"))
-            self.status.set_description(_("Install gh from cli.github.com and start gitswitch again."))
+            self.status.set_description(_("Install gh from cli.github.com and start Git-Switch again."))
             self.stack.set_visible_child_name("status")
             return
         accounts = core.list_accounts()

@@ -28,7 +28,7 @@ TOOLS = [
         "description": (
             "Switch the active GitHub CLI account (gh auth switch). This changes the account "
             "used by gh and by git over HTTPS for the whole machine, not just this session. "
-            "If the user enabled it in gitswitch, the global git user.name/user.email follow."
+            "If the user enabled it in Git-Switch, the global git user.name/user.email follow."
         ),
         "inputSchema": {
             "type": "object",

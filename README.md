@@ -1,13 +1,13 @@
-<img src="data/dev.gitswitch.GitSwitch.svg" width="96" align="right" alt="gitswitch logo">
+<img src="data/dev.gitswitch.GitSwitch.svg" width="96" align="right" alt="Git-Switch logo">
 
-# gitswitch
+# Git-Switch
 
 A small GTK app around `gh auth switch`: see every account the
 [GitHub CLI](https://cli.github.com) is logged in to and switch between them
 with one click – from the window, from the command line, or from Claude Code
 through the bundled MCP server.
 
-![gitswitch window](docs/screenshot.png)
+![Git-Switch window](docs/screenshot.png)
 
 ## Features
 
@@ -32,14 +32,14 @@ Requires `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 and libadwaita ≥ 1.4.
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.1.0_all.deb
+sudo apt install ./gitswitch_0.1.1_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.1.0-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.1.1-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.
