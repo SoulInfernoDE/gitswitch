@@ -164,20 +164,31 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 _api_opener = urllib.request.build_opener(_NoRedirect)
 
 
-def api_get(url: str, authorization: str) -> tuple[object, object]:
-    """Authenticated GET over HTTPS; returns the decoded JSON body and the response headers."""
+def api_request(
+    url: str,
+    authorization: str,
+    method: str = "GET",
+    data: bytes | None = None,
+    content_type: str = "application/json",
+    timeout: int = 10,
+) -> tuple[object, object]:
+    """Authenticated HTTPS request; returns the body (decoded if it is JSON) and the response headers."""
     if not url.startswith("https://"):
         raise ValueError("refusing to send a token over an unencrypted connection")
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Authorization": authorization,
-            "Accept": "application/json",
-            "User-Agent": f"gitswitch/{__version__}",
-        },
-    )
-    with _api_opener.open(request, timeout=10) as response:
-        return json.load(response), response.headers
+    headers = {"Authorization": authorization, "Accept": "application/json", "User-Agent": f"gitswitch/{__version__}"}
+    if data is not None:
+        headers["Content-Type"] = content_type
+    request = urllib.request.Request(url, data=data, method=method, headers=headers)
+    with _api_opener.open(request, timeout=timeout) as response:
+        text = response.read().decode("utf-8", "replace")
+        try:
+            return json.loads(text), response.headers
+        except ValueError:
+            return text, response.headers
+
+
+def api_get(url: str, authorization: str) -> tuple[object, object]:
+    return api_request(url, authorization)
 
 
 def fetch_profile(account: Account) -> Profile:

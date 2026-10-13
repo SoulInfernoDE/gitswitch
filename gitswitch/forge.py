@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import shutil
 import sys
 import urllib.error
+import urllib.parse
+import uuid
 from pathlib import Path
 
 from . import core
@@ -142,6 +145,70 @@ def fetch_profile(account: core.Account) -> core.Profile:
     except core.GhError:
         return core.Profile(valid=None, login=account.user)
     return _profile(account.host, account.user, token)
+
+
+# --- API access for tools ---------------------------------------------------
+
+API_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
+# Endpoints that hand out new credentials stay closed, so no secret can end up in a tool result.
+_CREDENTIAL_PATH = re.compile(r"/(tokens|oauth2)(/|\?|$)")
+_REPOSITORY = re.compile(r"[\w.-]+/[\w.-]+")
+
+
+def _api_account(host: str | None) -> core.Account:
+    active = [account for account in list_accounts() if account.active and host in (None, "", account.host)]
+    if not active:
+        raise core.GhError(_("No Forgejo or Gitea account is signed in for this host."))
+    if len(active) > 1:
+        raise core.GhError(_("Several Forgejo or Gitea hosts are known; pass a hostname."))
+    return active[0]
+
+
+def _api_call(account: core.Account, method: str, path: str, data: bytes | None, content_type: str, timeout: int):
+    token = lookup_token(account.host, account.user)
+    if not token:
+        raise core.GhError(_("No token for {user} in the system keyring; sign in again.").format(user=account.user))
+    try:
+        url = f"https://{account.host}/api/v1{path}"
+        return core.api_request(url, f"token {token}", method, data, content_type, timeout)[0]
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")[:500].strip()
+        raise core.GhError(f"HTTP {error.code} {error.reason}: {detail}".rstrip(": ")) from None
+    except (OSError, ValueError) as error:
+        raise core.GhError(_("Request to {host} failed: {detail}").format(host=account.host, detail=error)) from None
+
+
+def api(method: str, path: str, body: object = None, host: str | None = None) -> object:
+    """Call the API of the active account's server; ``path`` is relative to ``/api/v1``."""
+    method = method.upper()
+    if method not in API_METHODS:
+        raise core.GhError(_("Unsupported method: {method}").format(method=method))
+    segments = path.split("?", 1)[0].split("/")
+    if not path.startswith("/") or path.startswith("//") or ".." in segments or any(c.isspace() for c in path):
+        raise core.GhError(_("The path must start with a single / and stay below /api/v1."))
+    if _CREDENTIAL_PATH.search(path):
+        raise core.GhError(_("Endpoints that create or list credentials are not available here."))
+    data = None if body is None else json.dumps(body).encode()
+    return _api_call(_api_account(host), method, path, data, "application/json", 60)
+
+
+def upload_release_asset(repository: str, tag: str, file: str, host: str | None = None) -> object:
+    """Attach a local file to the release of ``tag`` in ``owner/name``."""
+    source = Path(file).expanduser()
+    if not _REPOSITORY.fullmatch(repository):
+        raise core.GhError(_("The repository must be given as owner/name."))
+    if not source.is_file():
+        raise core.GhError(_("{path} is not a file.").format(path=source))
+    account = _api_account(host)
+    release = api("GET", f"/repos/{repository}/releases/tags/{urllib.parse.quote(tag, safe='')}", host=account.host)
+    boundary = uuid.uuid4().hex
+    head = (
+        f'--{boundary}\r\nContent-Disposition: form-data; name="attachment"; filename="{source.name}"\r\n'
+        "Content-Type: application/octet-stream\r\n\r\n"
+    ).encode()
+    data = head + source.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
+    path = f"/repos/{repository}/releases/{release['id']}/assets?name={urllib.parse.quote(source.name)}"
+    return _api_call(account, "POST", path, data, f"multipart/form-data; boundary={boundary}", 300)
 
 
 # --- actions ----------------------------------------------------------------

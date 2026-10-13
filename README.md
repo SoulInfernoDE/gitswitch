@@ -54,14 +54,14 @@ Forgejo/Gitea accounts additionally need libsecret and a running keyring
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.3.0_all.deb
+sudo apt install ./gitswitch_0.4.0_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.3.0-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.4.0-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.
@@ -109,16 +109,25 @@ yourself:
 claude mcp add --scope user gitswitch -- gitswitch-mcp
 ```
 
-Restart Claude Code afterwards. Two tools become available:
+Restart Claude Code afterwards. These tools become available:
 
 | Tool | Purpose |
 | --- | --- |
 | `list_github_accounts` | All accounts per host (GitHub, Forgejo, Gitea), the active one, token validity and scopes |
 | `switch_github_account` | Activate an account (`user`, optional `hostname`) |
+| `forgejo_api_get` | Read from the REST API of a Forgejo/Gitea server, like `gh api` for GitHub |
+| `forgejo_api_write` | Change things through that API: issues, pull requests, releases, mirror sync … |
+| `forgejo_upload_release_asset` | Attach a local file to a release |
 
-The tool names date from the GitHub-only versions; both tools cover Forgejo
-and Gitea accounts too. Switching is global: it changes the account for every
+The names of the first two tools date from the GitHub-only versions; both
+cover Forgejo and Gitea accounts too. Switching is global: it changes the account for every
 `gh` and `git` (HTTPS) process on the machine. The server never returns tokens.
+
+The Forgejo tools exist because there is no counterpart to the `gh` command for
+these servers. They act as the active account of the server. Reading and
+writing are separate tools so that reading can be allowed permanently while
+changes still ask for confirmation. Requests only go to a signed-in server,
+paths cannot leave its API, and endpoints that issue credentials are blocked.
 
 ## Development
 
@@ -127,7 +136,8 @@ python3 -m unittest discover -s tests
 packaging/make-sounds.py   # regenerate the sound effects
 packaging/update-translations.sh   # extract program texts, update and compile the catalogs
 packaging/build-deb.sh
-packaging/mirror-releases.py <github owner/repo> <forgejo host> <forgejo owner/repo>   # copy releases to a Forgejo mirror
+packaging/release.sh <notes file> [<forgejo host> <forgejo owner/repo>]   # build, release on GitHub, copy to the mirror
+packaging/mirror-releases.py <github owner/repo> <forgejo host> <forgejo owner/repo>   # only copy releases to a Forgejo mirror
 ```
 
 Program texts live in gettext catalogs under `gitswitch/locale/`; English is

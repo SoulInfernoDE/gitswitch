@@ -45,7 +45,7 @@ msgstr ""
 msgid "gitswitch: {error}"
 msgstr ""
 
-#: gitswitch/core.py:65 gitswitch/core.py:453
+#: gitswitch/core.py:65 gitswitch/core.py:464
 #, python-brace-format
 msgid "'{command}' was not found in PATH"
 msgstr ""
@@ -60,138 +60,178 @@ msgstr ""
 msgid "'{command}' failed"
 msgstr ""
 
-#: gitswitch/core.py:240
+#: gitswitch/core.py:251
 #, python-brace-format
 msgid "Cannot read the profile of {user}; git identity left unchanged"
 msgstr ""
 
-#: gitswitch/core.py:283
+#: gitswitch/core.py:294
 msgid "none"
 msgstr ""
 
-#: gitswitch/core.py:284
+#: gitswitch/core.py:295
 #, python-brace-format
 msgid "No logged-in account '{user}'. Known accounts: {known}"
 msgstr ""
 
-#: gitswitch/core.py:286
+#: gitswitch/core.py:297
 #, python-brace-format
 msgid "'{user}' exists on several hosts; pass a hostname"
 msgstr ""
 
-#: gitswitch/core.py:337
+#: gitswitch/core.py:348
 #, python-brace-format
 msgid ""
 "{host} is a Forgejo or Gitea server, not GitHub Enterprise. Choose \"Forgejo "
 "or Gitea\" under \"Account on\" to add it."
 msgstr ""
 
-#: gitswitch/core.py:397
+#: gitswitch/core.py:408
 msgid "Full access to repositories"
 msgstr ""
 
-#: gitswitch/core.py:398
+#: gitswitch/core.py:409
 msgid "Read organization and team membership"
 msgstr ""
 
-#: gitswitch/core.py:399
+#: gitswitch/core.py:410
 msgid "Create and edit gists"
 msgstr ""
 
-#: gitswitch/core.py:400
+#: gitswitch/core.py:411
 msgid "Update GitHub Actions workflow files"
 msgstr ""
 
-#: gitswitch/core.py:401
+#: gitswitch/core.py:412
 msgid "Delete repositories"
 msgstr ""
 
-#: gitswitch/core.py:402
+#: gitswitch/core.py:413
 msgid "Download packages"
 msgstr ""
 
-#: gitswitch/core.py:403
+#: gitswitch/core.py:414
 msgid "Upload packages"
 msgstr ""
 
-#: gitswitch/core.py:404
+#: gitswitch/core.py:415
 msgid "Delete packages"
 msgstr ""
 
-#: gitswitch/core.py:405
+#: gitswitch/core.py:416
 msgid "Manage SSH keys"
 msgstr ""
 
-#: gitswitch/core.py:406
+#: gitswitch/core.py:417
 msgid "Manage SSH signing keys"
 msgstr ""
 
-#: gitswitch/core.py:407
+#: gitswitch/core.py:418
 msgid "Manage GPG keys"
 msgstr ""
 
-#: gitswitch/core.py:408
+#: gitswitch/core.py:419
 msgid "Read and edit profile data"
 msgstr ""
 
-#: gitswitch/core.py:409
+#: gitswitch/core.py:420
 msgid "Read notifications"
 msgstr ""
 
-#: gitswitch/core.py:410
+#: gitswitch/core.py:421
 msgid "Manage projects"
 msgstr ""
 
-#: gitswitch/core.py:411
+#: gitswitch/core.py:422
 msgid "Read projects"
 msgstr ""
 
-#: gitswitch/core.py:412
+#: gitswitch/core.py:423
 msgid "Create and manage codespaces"
 msgstr ""
 
-#: gitswitch/core.py:413
+#: gitswitch/core.py:424
 msgid "Manage organizations and teams"
 msgstr ""
 
-#: gitswitch/core.py:414
+#: gitswitch/core.py:425
 msgid "Manage repository webhooks"
 msgstr ""
 
-#: gitswitch/core.py:415
+#: gitswitch/core.py:426
 msgid "Read and write security events"
 msgstr ""
 
-#: gitswitch/core.py:416
+#: gitswitch/core.py:427
 msgid "Read and write team discussions"
 msgstr ""
 
-#: gitswitch/core.py:509
+#: gitswitch/core.py:520
 #, python-brace-format
 msgid "{path} does not exist; is Claude Code installed?"
 msgstr ""
 
-#: gitswitch/forge.py:76
+#: gitswitch/forge.py:79
 msgid ""
 "No system keyring is available (libsecret is missing), so the token cannot "
 "be stored safely."
 msgstr ""
 
-#: gitswitch/forge.py:88
+#: gitswitch/forge.py:91
 #, python-brace-format
 msgid "The system keyring refused the request: {detail}"
 msgstr ""
 
-#: gitswitch/forge.py:99
+#: gitswitch/forge.py:102
 msgid "The token could not be stored in the system keyring."
 msgstr ""
 
-#: gitswitch/forge.py:155
+#: gitswitch/forge.py:161
+msgid "No Forgejo or Gitea account is signed in for this host."
+msgstr ""
+
+#: gitswitch/forge.py:163
+msgid "Several Forgejo or Gitea hosts are known; pass a hostname."
+msgstr ""
+
+#: gitswitch/forge.py:170
+#, python-brace-format
+msgid "No token for {user} in the system keyring; sign in again."
+msgstr ""
+
+#: gitswitch/forge.py:178
+#, python-brace-format
+msgid "Request to {host} failed: {detail}"
+msgstr ""
+
+#: gitswitch/forge.py:185 gitswitch/mcp.py:128
+#, python-brace-format
+msgid "Unsupported method: {method}"
+msgstr ""
+
+#: gitswitch/forge.py:188
+msgid "The path must start with a single / and stay below /api/v1."
+msgstr ""
+
+#: gitswitch/forge.py:190
+msgid "Endpoints that create or list credentials are not available here."
+msgstr ""
+
+#: gitswitch/forge.py:199
+msgid "The repository must be given as owner/name."
+msgstr ""
+
+#: gitswitch/forge.py:201
+#, python-brace-format
+msgid "{path} is not a file."
+msgstr ""
+
+#: gitswitch/forge.py:222
 #, python-brace-format
 msgid "{host} rejected the token."
 msgstr ""
 
-#: gitswitch/forge.py:157
+#: gitswitch/forge.py:224
 #, python-brace-format
 msgid "{host} did not answer like a Forgejo or Gitea server over HTTPS."
 msgstr ""
@@ -545,20 +585,74 @@ msgstr ""
 msgid "Host name, only needed if the login exists on several hosts"
 msgstr ""
 
-#: gitswitch/mcp.py:57
+#: gitswitch/mcp.py:51
+msgid ""
+"Read from the REST API of a Forgejo or Gitea server as the active account, "
+"like 'gh api' for GitHub. The path is relative to /api/v1, for example /user/"
+"repos, /repos/OWNER/NAME/issues?state=open, /repos/OWNER/NAME/pulls, /repos/"
+"OWNER/NAME/releases, /repos/OWNER/NAME/actions/tasks or /repos/OWNER/NAME/"
+"contents/PATH. Lists are paged with ?page= and ?limit=. The token is never "
+"returned."
+msgstr ""
+
+#: gitswitch/mcp.py:59 gitswitch/mcp.py:79
+msgid "API path below /api/v1, starting with /"
+msgstr ""
+
+#: gitswitch/mcp.py:60 gitswitch/mcp.py:81 gitswitch/mcp.py:100
+msgid "Server, only needed if several are signed in"
+msgstr ""
+
+#: gitswitch/mcp.py:70
+msgid ""
+"Change something through the REST API of a Forgejo or Gitea server as the "
+"active account: create or edit issues, comments, pull requests, releases and "
+"repositories, merge a pull request (POST /repos/OWNER/NAME/pulls/INDEX/"
+"merge), or sync a mirror (POST /repos/OWNER/NAME/mirror-sync). The path is "
+"relative to /api/v1. DELETE requests remove data permanently."
+msgstr ""
+
+#: gitswitch/mcp.py:80
+msgid "JSON body of the request"
+msgstr ""
+
+#: gitswitch/mcp.py:91
+msgid ""
+"Attach a local file to an existing release on a Forgejo or Gitea server. "
+"Create the release first with forgejo_api_write (POST /repos/OWNER/NAME/"
+"releases)."
+msgstr ""
+
+#: gitswitch/mcp.py:97
+msgid "Repository as owner/name"
+msgstr ""
+
+#: gitswitch/mcp.py:98
+msgid "Tag of the release"
+msgstr ""
+
+#: gitswitch/mcp.py:99
+msgid "Path of the local file to upload"
+msgstr ""
+
+#: gitswitch/mcp.py:119
 msgid "'user' is required"
 msgstr ""
 
-#: gitswitch/mcp.py:59
+#: gitswitch/mcp.py:130
 #, python-brace-format
 msgid "Unknown tool: {name}"
 msgstr ""
 
-#: gitswitch/mcp.py:92
+#: gitswitch/mcp.py:164
+msgid "[Result cut off; narrow the request or use ?limit= and ?page=.]"
+msgstr ""
+
+#: gitswitch/mcp.py:166
 #, python-brace-format
 msgid "Method not found: {method}"
 msgstr ""
 
-#: gitswitch/mcp.py:102
+#: gitswitch/mcp.py:176
 msgid "Parse error"
 msgstr ""

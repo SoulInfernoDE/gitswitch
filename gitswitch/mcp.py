@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import sys
 
-from . import __version__, core
+from . import __version__, core, forge
 from .i18n import _
 
 PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
@@ -45,10 +45,72 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "forgejo_api_get",
+        "description": _(
+            "Read from the REST API of a Forgejo or Gitea server as the active account, like 'gh api' for "
+            "GitHub. The path is relative to /api/v1, for example /user/repos, /repos/OWNER/NAME/issues?state=open, "
+            "/repos/OWNER/NAME/pulls, /repos/OWNER/NAME/releases, /repos/OWNER/NAME/actions/tasks or "
+            "/repos/OWNER/NAME/contents/PATH. Lists are paged with ?page= and ?limit=. The token is never returned."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": _("API path below /api/v1, starting with /")},
+                "hostname": {"type": "string", "description": _("Server, only needed if several are signed in")},
+            },
+            "required": ["path"],
+            "additionalProperties": False,
+        },
+        "annotations": {"readOnlyHint": True},
+    },
+    {
+        "name": "forgejo_api_write",
+        "description": _(
+            "Change something through the REST API of a Forgejo or Gitea server as the active account: create or "
+            "edit issues, comments, pull requests, releases and repositories, merge a pull request "
+            "(POST /repos/OWNER/NAME/pulls/INDEX/merge), or sync a mirror (POST /repos/OWNER/NAME/mirror-sync). "
+            "The path is relative to /api/v1. DELETE requests remove data permanently."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "method": {"type": "string", "enum": ["POST", "PUT", "PATCH", "DELETE"]},
+                "path": {"type": "string", "description": _("API path below /api/v1, starting with /")},
+                "body": {"type": "object", "description": _("JSON body of the request")},
+                "hostname": {"type": "string", "description": _("Server, only needed if several are signed in")},
+            },
+            "required": ["method", "path"],
+            "additionalProperties": False,
+        },
+        "annotations": {"readOnlyHint": False, "destructiveHint": True},
+    },
+    {
+        "name": "forgejo_upload_release_asset",
+        "description": _(
+            "Attach a local file to an existing release on a Forgejo or Gitea server. "
+            "Create the release first with forgejo_api_write (POST /repos/OWNER/NAME/releases)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "repository": {"type": "string", "description": _("Repository as owner/name")},
+                "tag": {"type": "string", "description": _("Tag of the release")},
+                "file": {"type": "string", "description": _("Path of the local file to upload")},
+                "hostname": {"type": "string", "description": _("Server, only needed if several are signed in")},
+            },
+            "required": ["repository", "tag", "file"],
+            "additionalProperties": False,
+        },
+        "annotations": {"readOnlyHint": False},
+    },
 ]
 
+# Larger results are cut so one call cannot flood the conversation.
+MAX_RESULT_CHARS = 60000
 
-def _call_tool(name: str, arguments: dict) -> dict:
+
+def _call_tool(name: str, arguments: dict) -> object:
     if name == "list_github_accounts":
         return {"accounts": core.describe_accounts()}
     if name == "switch_github_account":
@@ -56,6 +118,15 @@ def _call_tool(name: str, arguments: dict) -> dict:
         if not isinstance(user, str) or not user:
             raise core.GhError(_("'user' is required"))
         return core.switch_account(user, arguments.get("hostname"))
+    if name in ("forgejo_api_get", "forgejo_api_write", "forgejo_upload_release_asset"):
+        text = {key: value for key, value in arguments.items() if isinstance(value, str)}
+        host = text.get("hostname")
+        if name == "forgejo_upload_release_asset":
+            return forge.upload_release_asset(text.get("repository", ""), text.get("tag", ""), text.get("file", ""), host)
+        method = "GET" if name == "forgejo_api_get" else text.get("method", "").upper()
+        if name == "forgejo_api_write" and method not in ("POST", "PUT", "PATCH", "DELETE"):
+            raise core.GhError(_("Unsupported method: {method}").format(method=method))
+        return forge.api(method, text.get("path", ""), arguments.get("body"), host)
     raise core.GhError(_("Unknown tool: {name}").format(name=name))
 
 
@@ -88,7 +159,10 @@ def handle(message: dict) -> dict | None:
             result = _call_tool(params.get("name", ""), params.get("arguments") or {})
         except core.GhError as error:
             return reply({"content": [{"type": "text", "text": str(error)}], "isError": True})
-        return reply({"content": [{"type": "text", "text": json.dumps(result, indent=2)}]})
+        text = json.dumps(result, indent=2, ensure_ascii=False)
+        if len(text) > MAX_RESULT_CHARS:
+            text = text[:MAX_RESULT_CHARS] + "\n" + _("[Result cut off; narrow the request or use ?limit= and ?page=.]")
+        return reply({"content": [{"type": "text", "text": text}]})
     return reply(error={"code": -32601, "message": _("Method not found: {method}").format(method=method)})
 
 

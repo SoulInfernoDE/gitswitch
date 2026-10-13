@@ -182,6 +182,39 @@ class ForgeTest(unittest.TestCase):
                 forge.add_account("git.example.com", "bad")
         self.assertNotIn("bad", self.keyring.values())
 
+    def test_api_goes_to_the_account_host_with_its_token(self):
+        with mock.patch.object(core, "api_request", return_value=({"ok": True}, {})) as request:
+            self.assertEqual(forge.api("post", "/repos/dana/x/issues", {"title": "t"}), {"ok": True})
+        url, authorization, method, data = request.call_args.args[:4]
+        self.assertEqual((url, authorization, method), ("https://git.example.com/api/v1/repos/dana/x/issues", "token s3cret", "POST"))
+        self.assertEqual(json.loads(data), {"title": "t"})
+
+    def test_api_rejects_escaping_paths_and_credential_endpoints(self):
+        with mock.patch.object(core, "api_request") as request:
+            for method, path in (
+                ("GET", "repos/dana/x"),
+                ("GET", "//evil.example/api"),
+                ("GET", "/../../login"),
+                ("GET", "/repos/dana/x /y"),
+                ("GET", "/users/dana/tokens"),
+                ("POST", "/user/applications/oauth2"),
+                ("TRACE", "/user"),
+            ):
+                with self.assertRaises(core.GhError, msg=path):
+                    forge.api(method, path)
+            with self.assertRaises(core.GhError):
+                forge.api("GET", "/user", host="other.example.com")
+        request.assert_not_called()
+
+    def test_mcp_tools_reach_the_api(self):
+        with mock.patch.object(forge, "api", return_value=[]) as api:
+            call = {"name": "forgejo_api_get", "arguments": {"path": "/user/repos"}}
+            mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": call})
+            call = {"name": "forgejo_api_write", "arguments": {"method": "GET", "path": "/user"}}
+            result = mcp.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": call})["result"]
+        api.assert_called_once_with("GET", "/user/repos", None, None)
+        self.assertTrue(result["isError"])
+
     def test_noreply_address(self):
         profile = core.Profile(valid=True, login="dana", user_id=7)
         self.assertEqual(core.noreply_email("git.example.com:3000", profile, forge.KIND), "dana@noreply.git.example.com")
@@ -220,7 +253,16 @@ class McpTest(unittest.TestCase):
         result = self.call("initialize", {"protocolVersion": "2024-11-05"})["result"]
         self.assertEqual(result["protocolVersion"], "2024-11-05")
         names = [tool["name"] for tool in self.call("tools/list")["result"]["tools"]]
-        self.assertEqual(names, ["list_github_accounts", "switch_github_account"])
+        self.assertEqual(
+            names,
+            [
+                "list_github_accounts",
+                "switch_github_account",
+                "forgejo_api_get",
+                "forgejo_api_write",
+                "forgejo_upload_release_asset",
+            ],
+        )
 
     def test_notification_has_no_response(self):
         self.assertIsNone(mcp.handle({"jsonrpc": "2.0", "method": "notifications/initialized"}))

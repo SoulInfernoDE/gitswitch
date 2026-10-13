@@ -54,14 +54,14 @@ Schlüsselbund (GNOME Keyring, KWallet o. Ä.).
 [Release-Seite](../../releases) herunterladen und installieren:
 
 ```bash
-sudo apt install ./gitswitch_0.3.0_all.deb
+sudo apt install ./gitswitch_0.4.0_all.deb
 ```
 
 **Andere Distributionen** – PyGObject, GTK 4 und libadwaita über den
 Paketmanager installieren, dann:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.3.0-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.4.0-py3-none-any.whl
 ```
 
 **Aus dem Quellcode** – `python3 -m gitswitch` in einem Checkout.
@@ -112,17 +112,27 @@ registrieren:
 claude mcp add --scope user gitswitch -- gitswitch-mcp
 ```
 
-Danach Claude Code neu starten. Zwei Tools stehen dann zur Verfügung:
+Danach Claude Code neu starten. Diese Tools stehen dann zur Verfügung:
 
 | Tool | Zweck |
 | --- | --- |
 | `list_github_accounts` | Alle Konten pro Host (GitHub, Forgejo, Gitea), das aktive Konto, Token-Gültigkeit und Scopes |
 | `switch_github_account` | Ein Konto aktivieren (`user`, optional `hostname`) |
+| `forgejo_api_get` | Aus der REST-API eines Forgejo-/Gitea-Servers lesen, wie `gh api` für GitHub |
+| `forgejo_api_write` | Über diese API etwas ändern: Issues, Pull Requests, Releases, Spiegel-Abgleich … |
+| `forgejo_upload_release_asset` | Eine lokale Datei an ein Release anhängen |
 
-Die Tool-Namen stammen aus den reinen GitHub-Versionen; beide Tools decken
-auch Forgejo- und Gitea-Konten ab. Der Wechsel gilt global: Er ändert das Konto
+Die Namen der ersten beiden Tools stammen aus den reinen GitHub-Versionen;
+beide decken auch Forgejo- und Gitea-Konten ab. Der Wechsel gilt global: Er ändert das Konto
 für jeden `gh`- und `git`-Prozess (HTTPS) auf dem Rechner. Der Server gibt
 niemals Tokens zurück.
+
+Die Forgejo-Tools gibt es, weil für diese Server kein Gegenstück zum Befehl
+`gh` existiert. Sie handeln als das aktive Konto des Servers. Lesen und
+Schreiben sind getrennte Tools, damit sich Lesen dauerhaft erlauben lässt,
+während Änderungen weiterhin nachfragen. Anfragen gehen nur an einen
+angemeldeten Server, Pfade können dessen API nicht verlassen, und Endpunkte,
+die Zugangsdaten ausstellen, sind gesperrt.
 
 ## Entwicklung
 
@@ -131,7 +141,8 @@ python3 -m unittest discover -s tests
 packaging/make-sounds.py   # Soundeffekte neu erzeugen
 packaging/update-translations.sh   # Programmtexte extrahieren, Kataloge aktualisieren und kompilieren
 packaging/build-deb.sh
-packaging/mirror-releases.py <github owner/repo> <forgejo host> <forgejo owner/repo>   # Releases auf einen Forgejo-Spiegel kopieren
+packaging/release.sh <notes file> [<forgejo host> <forgejo owner/repo>]   # bauen, auf GitHub veröffentlichen, auf den Spiegel kopieren
+packaging/mirror-releases.py <github owner/repo> <forgejo host> <forgejo owner/repo>   # nur Releases auf einen Forgejo-Spiegel kopieren
 ```
 
 Programmtexte liegen als gettext-Kataloge unter `gitswitch/locale/`; Englisch
