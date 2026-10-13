@@ -1,3 +1,4 @@
+import gettext
 import json
 import os
 import tempfile
@@ -63,6 +64,22 @@ class HostsFileTest(unittest.TestCase):
     def test_noreply_email(self):
         profile = core.Profile(valid=True, login="alice", user_id=42)
         self.assertEqual(core.noreply_email("github.com", profile), "42+alice@users.noreply.github.com")
+
+
+class CatalogTest(unittest.TestCase):
+    LOCALE_DIR = Path(core.__file__).parent / "locale"
+
+    def test_german_catalog_is_complete(self):
+        german = gettext.translation("gitswitch", self.LOCALE_DIR, languages=["de"])
+        self.assertEqual(german.gettext("Switch"), "Wechseln")
+        template = (self.LOCALE_DIR / "gitswitch.pot").read_text(encoding="utf-8")
+        catalog = (self.LOCALE_DIR / "de" / "LC_MESSAGES" / "gitswitch.po").read_text(encoding="utf-8")
+        self.assertEqual(template.count("\nmsgid "), catalog.count("\nmsgid "))
+        self.assertNotIn('msgstr ""\n\n', catalog.split("\n\n", 1)[1] + "\n")
+
+    def test_english_is_the_fallback(self):
+        other = gettext.translation("gitswitch", self.LOCALE_DIR, languages=["xx"], fallback=True)
+        self.assertEqual(other.gettext("Switch"), "Switch")
 
 
 class McpTest(unittest.TestCase):

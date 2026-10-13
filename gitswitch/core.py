@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from . import __version__
+from .i18n import _
 
 DEFAULT_HOST = "github.com"
 _CODE_RE = re.compile(r"\b[A-Z0-9]{4}-[A-Z0-9]{4}\b")
@@ -58,12 +59,12 @@ def _run(args: list[str], check: bool = True, timeout: int = 30) -> subprocess.C
             args, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL
         )
     except FileNotFoundError:
-        raise GhError(f"'{args[0]}' was not found in PATH") from None
+        raise GhError(_("'{command}' was not found in PATH").format(command=args[0])) from None
     except subprocess.TimeoutExpired:
-        raise GhError(f"'{' '.join(args[:3])}' timed out") from None
+        raise GhError(_("'{command}' timed out").format(command=" ".join(args[:3]))) from None
     if check and proc.returncode != 0:
         message = (proc.stderr or proc.stdout).strip()
-        raise GhError(message or f"'{' '.join(args[:3])}' failed")
+        raise GhError(message or _("'{command}' failed").format(command=" ".join(args[:3])))
     return proc
 
 
@@ -205,7 +206,7 @@ def sync_git_identity(account: Account, profile: Profile | None = None) -> dict:
     """Point the global git identity at ``account`` using its noreply address."""
     profile = profile or fetch_profile(account)
     if not profile.valid or not profile.user_id:
-        raise GhError(f"Cannot read the profile of {account.user}; git identity left unchanged")
+        raise GhError(_("Cannot read the profile of {user}; git identity left unchanged").format(user=account.user))
     name, email = profile.name or profile.login, noreply_email(account.host, profile)
     _run(["git", "config", "--global", "user.name", name])
     _run(["git", "config", "--global", "user.email", email])
@@ -248,10 +249,10 @@ def find_account(user: str, host: str | None = None) -> Account:
         if account.user.lower() == user.lower() and host in (None, "", account.host)
     ]
     if not matches:
-        known = ", ".join(f"{a.user}@{a.host}" for a in list_accounts()) or "none"
-        raise GhError(f"No logged-in account '{user}'. Known accounts: {known}")
+        known = ", ".join(f"{a.user}@{a.host}" for a in list_accounts()) or _("none")
+        raise GhError(_("No logged-in account '{user}'. Known accounts: {known}").format(user=user, known=known))
     if len(matches) > 1:
-        raise GhError(f"'{user}' exists on several hosts; pass a hostname")
+        raise GhError(_("'{user}' exists on several hosts; pass a hostname").format(user=user))
     return matches[0]
 
 
@@ -326,7 +327,7 @@ class LoginFlow:
                 args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
             )
         except FileNotFoundError:
-            raise GhError("'gh' was not found in PATH") from None
+            raise GhError(_("'{command}' was not found in PATH").format(command="gh")) from None
         threading.Thread(target=self._watch, daemon=True).start()
 
     def _watch(self) -> None:
@@ -382,7 +383,7 @@ def _write_mcp_entry(entry: dict | None) -> None:
     """Fallback for installations without the ``claude`` command line tool."""
     path = claude_config_file()
     if not path.exists():
-        raise GhError(f"{path} does not exist; is Claude Code installed?")
+        raise GhError(_("{path} does not exist; is Claude Code installed?").format(path=path))
     config = json.loads(path.read_text(encoding="utf-8"))
     servers = config.setdefault("mcpServers", {})
     if entry is None:

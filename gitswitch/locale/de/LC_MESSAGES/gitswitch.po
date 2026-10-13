@@ -1,0 +1,369 @@
+# German translation of gitswitch.
+msgid ""
+msgstr ""
+"Project-Id-Version: gitswitch\n"
+"Report-Msgid-Bugs-To: https://github.com/SoulInfernoDE/gitswitch/issues\n"
+"PO-Revision-Date: 2026-10-13 08:00+0200\n"
+"Last-Translator: gitswitch contributors\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: gitswitch/__main__.py:14
+msgid "Switch between GitHub CLI accounts."
+msgstr "Zwischen GitHub-CLI-Konten wechseln."
+
+#: gitswitch/__main__.py:17
+msgid "open the window (default)"
+msgstr "Fenster öffnen (Standard)"
+
+#: gitswitch/__main__.py:18
+msgid "print the logged-in accounts as JSON"
+msgstr "angemeldete Konten als JSON ausgeben"
+
+#: gitswitch/__main__.py:19
+msgid "activate an account"
+msgstr "ein Konto aktivieren"
+
+#: gitswitch/__main__.py:22
+msgid "run the MCP server on stdio"
+msgstr "MCP-Server über stdio starten"
+
+#: gitswitch/__main__.py:36
+#, python-brace-format
+msgid "gitswitch: {error}"
+msgstr "gitswitch: {error}"
+
+#: gitswitch/core.py:62 gitswitch/core.py:330
+#, python-brace-format
+msgid "'{command}' was not found in PATH"
+msgstr "'{command}' wurde nicht im PATH gefunden"
+
+#: gitswitch/core.py:64
+#, python-brace-format
+msgid "'{command}' timed out"
+msgstr "Zeitüberschreitung bei '{command}'"
+
+#: gitswitch/core.py:67
+#, python-brace-format
+msgid "'{command}' failed"
+msgstr "'{command}' ist fehlgeschlagen"
+
+#: gitswitch/core.py:209
+#, python-brace-format
+msgid "Cannot read the profile of {user}; git identity left unchanged"
+msgstr "Profil von {user} nicht lesbar; Git-Identität bleibt unverändert"
+
+#: gitswitch/core.py:252
+msgid "none"
+msgstr "keine"
+
+#: gitswitch/core.py:253
+#, python-brace-format
+msgid "No logged-in account '{user}'. Known accounts: {known}"
+msgstr "Kein angemeldetes Konto '{user}'. Bekannte Konten: {known}"
+
+#: gitswitch/core.py:255
+#, python-brace-format
+msgid "'{user}' exists on several hosts; pass a hostname"
+msgstr "'{user}' existiert auf mehreren Hosts; bitte Hostnamen angeben"
+
+#: gitswitch/core.py:386
+#, python-brace-format
+msgid "{path} does not exist; is Claude Code installed?"
+msgstr "{path} existiert nicht; ist Claude Code installiert?"
+
+#: gitswitch/gui.py:47 gitswitch/gui.py:146 gitswitch/gui.py:399
+msgid "Add account"
+msgstr "Konto hinzufügen"
+
+#: gitswitch/gui.py:50
+msgid "Refresh"
+msgstr "Aktualisieren"
+
+#: gitswitch/gui.py:52
+msgid "About"
+msgstr "Info"
+
+#: gitswitch/gui.py:102
+msgid "Copied to clipboard"
+msgstr "In die Zwischenablage kopiert"
+
+#: gitswitch/gui.py:110
+msgid "Switch between GitHub CLI accounts"
+msgstr "Zwischen GitHub-CLI-Konten wechseln"
+
+#: gitswitch/gui.py:138
+msgid "GitHub CLI not found"
+msgstr "GitHub CLI nicht gefunden"
+
+#: gitswitch/gui.py:139
+msgid "Install gh from cli.github.com and start Git-Switch again."
+msgstr "Installiere gh von cli.github.com und starte Git-Switch erneut."
+
+#: gitswitch/gui.py:144
+msgid "No accounts yet"
+msgstr "Noch keine Konten"
+
+#: gitswitch/gui.py:145
+msgid "Sign in to GitHub to get started."
+msgstr "Melde dich bei GitHub an, um loszulegen."
+
+#: gitswitch/gui.py:181
+#, python-brace-format
+msgid "Git protocol for {host}: {protocol}"
+msgstr "Git-Protokoll für {host}: {protocol}"
+
+#: gitswitch/gui.py:190
+#, python-brace-format
+msgid "Git now uses gh to authenticate with {host}"
+msgstr "Git meldet sich bei {host} jetzt über gh an"
+
+#: gitswitch/gui.py:205
+msgid "Git protocol"
+msgstr "Git-Protokoll"
+
+#: gitswitch/gui.py:206
+msgid "Use gh as Git credential helper"
+msgstr "gh als Git-Anmeldehelfer einrichten"
+
+#: gitswitch/gui.py:208
+msgid "Git settings"
+msgstr "Git-Einstellungen"
+
+#: gitswitch/gui.py:224
+msgid "Switch"
+msgstr "Wechseln"
+
+#: gitswitch/gui.py:233
+msgid "Open profile"
+msgstr "Profil öffnen"
+
+#: gitswitch/gui.py:234
+msgid "Copy token"
+msgstr "Token kopieren"
+
+#: gitswitch/gui.py:235 gitswitch/gui.py:270
+msgid "Sign in again"
+msgstr "Neu anmelden"
+
+#: gitswitch/gui.py:236 gitswitch/gui.py:375
+msgid "Sign out"
+msgstr "Abmelden"
+
+#: gitswitch/gui.py:240
+msgid "Change permissions…"
+msgstr "Berechtigungen ändern …"
+
+#: gitswitch/gui.py:262
+msgid "Checking token…"
+msgstr "Token wird geprüft …"
+
+#: gitswitch/gui.py:268
+msgid "Token invalid – sign in again"
+msgstr "Token ungültig – bitte neu anmelden"
+
+#: gitswitch/gui.py:273
+msgid "Token could not be checked"
+msgstr "Token konnte nicht geprüft werden"
+
+#: gitswitch/gui.py:277
+msgid "Active"
+msgstr "Aktiv"
+
+#: gitswitch/gui.py:280
+#, python-brace-format
+msgid "Permissions: {scopes}"
+msgstr "Berechtigungen: {scopes}"
+
+#: gitswitch/gui.py:315
+#, python-brace-format
+msgid "Switched to {user}"
+msgstr "Zu {user} gewechselt"
+
+#: gitswitch/gui.py:338
+msgid "Additional permissions, e.g. workflow, delete_repo"
+msgstr "Zusätzliche Berechtigungen, z. B. workflow, delete_repo"
+
+#: gitswitch/gui.py:344 gitswitch/gui.py:423
+msgid "Change permissions"
+msgstr "Berechtigungen ändern"
+
+#: gitswitch/gui.py:345
+msgid ""
+"Renews the token in the browser. Leave the field empty to keep the current "
+"permissions."
+msgstr ""
+"Erneuert das Token im Browser. Feld leer lassen, um die aktuellen "
+"Berechtigungen zu behalten."
+
+#: gitswitch/gui.py:348 gitswitch/gui.py:374 gitswitch/gui.py:400
+#: gitswitch/gui.py:427
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: gitswitch/gui.py:349
+msgid "Continue"
+msgstr "Weiter"
+
+#: gitswitch/gui.py:371
+#, python-brace-format
+msgid "Sign out {user}?"
+msgstr "{user} abmelden?"
+
+#: gitswitch/gui.py:372
+#, python-brace-format
+msgid "The stored token for this account on {host} will be removed."
+msgstr "Das gespeicherte Token dieses Kontos auf {host} wird entfernt."
+
+#: gitswitch/gui.py:382
+#, python-brace-format
+msgid "Signed out {user}"
+msgstr "{user} abgemeldet"
+
+#: gitswitch/gui.py:395
+msgid "Host"
+msgstr "Host"
+
+#: gitswitch/gui.py:401
+msgid "Sign in"
+msgstr "Anmelden"
+
+#: gitswitch/gui.py:416
+msgid "Copy code"
+msgstr "Code kopieren"
+
+#: gitswitch/gui.py:423
+#, python-brace-format
+msgid "Sign in to {host}"
+msgstr "Bei {host} anmelden"
+
+#: gitswitch/gui.py:424
+msgid "Starting sign-in…"
+msgstr "Anmeldung wird gestartet …"
+
+#: gitswitch/gui.py:433
+msgid "Enter this code in the browser window that just opened:"
+msgstr "Gib diesen Code im soeben geöffneten Browserfenster ein:"
+
+#: gitswitch/gui.py:441
+#, python-brace-format
+msgid "Signed in to {host}"
+msgstr "Bei {host} angemeldet"
+
+#: gitswitch/gui.py:441
+#, python-brace-format
+msgid "Token renewed for {host}"
+msgstr "Token für {host} erneuert"
+
+#: gitswitch/gui.py:445
+msgid "Sign-in failed"
+msgstr "Anmeldung fehlgeschlagen"
+
+#: gitswitch/gui.py:446
+#, python-brace-format
+msgid "{label}: {detail}"
+msgstr "{label}: {detail}"
+
+#: gitswitch/gui.py:474
+msgid "Options"
+msgstr "Optionen"
+
+#: gitswitch/gui.py:476
+msgid "Sync Git identity"
+msgstr "Git-Identität mitwechseln"
+
+#: gitswitch/gui.py:484 gitswitch/gui.py:491
+msgid "Claude Code integration"
+msgstr "Claude-Code-Integration"
+
+#: gitswitch/gui.py:485
+msgid "Register the MCP server so Claude Code can switch accounts"
+msgstr "MCP-Server registrieren, damit Claude Code das Konto wechseln kann"
+
+#: gitswitch/gui.py:492
+msgid "Claude Code was not found – copy the setup command instead"
+msgstr ""
+"Claude Code wurde nicht gefunden – stattdessen Einrichtungsbefehl kopieren"
+
+#: gitswitch/gui.py:494
+msgid "Copy command"
+msgstr "Befehl kopieren"
+
+#: gitswitch/gui.py:500
+msgid "Sound effects"
+msgstr "Soundeffekte"
+
+#: gitswitch/gui.py:507
+msgid "not set"
+msgstr "nicht gesetzt"
+
+#: gitswitch/gui.py:509
+#, python-brace-format
+msgid "Set global user.name and user.email when switching. Current: {identity}"
+msgstr ""
+"Globales user.name und user.email beim Wechsel setzen. Aktuell: {identity}"
+
+#: gitswitch/gui.py:527
+#, python-brace-format
+msgid "Git identity set to {identity}"
+msgstr "Git-Identität auf {identity} gesetzt"
+
+#: gitswitch/gui.py:555
+msgid "MCP server registered in Claude Code"
+msgstr "MCP-Server in Claude Code registriert"
+
+#: gitswitch/gui.py:557
+msgid "MCP server removed from Claude Code"
+msgstr "MCP-Server aus Claude Code entfernt"
+
+#: gitswitch/mcp.py:21
+msgid ""
+"List the GitHub accounts the GitHub CLI (gh) is logged in to, per host, "
+"including which one is active and whether its token is still valid."
+msgstr ""
+"Listet pro Host die GitHub-Konten auf, mit denen die GitHub CLI (gh) "
+"angemeldet ist, einschließlich des aktiven Kontos und der Gültigkeit der "
+"Tokens."
+
+#: gitswitch/mcp.py:30
+msgid ""
+"Switch the active GitHub CLI account (gh auth switch). This changes the "
+"account used by gh and by git over HTTPS for the whole machine, not just "
+"this session. If the user enabled it in Git-Switch, the global git user.name/"
+"user.email follow."
+msgstr ""
+"Wechselt das aktive GitHub-CLI-Konto (gh auth switch). Das ändert das Konto, "
+"das gh und git über HTTPS verwenden, für den ganzen Rechner, nicht nur für "
+"diese Sitzung. Falls in Git-Switch aktiviert, folgen globales git user.name/"
+"user.email."
+
+#: gitswitch/mcp.py:37
+msgid "Login name of the account to activate"
+msgstr "Anmeldename des zu aktivierenden Kontos"
+
+#: gitswitch/mcp.py:40
+msgid "GitHub host, only needed if the login exists on several hosts"
+msgstr ""
+"GitHub-Host, nur nötig, wenn der Anmeldename auf mehreren Hosts existiert"
+
+#: gitswitch/mcp.py:56
+msgid "'user' is required"
+msgstr "'user' ist erforderlich"
+
+#: gitswitch/mcp.py:58
+#, python-brace-format
+msgid "Unknown tool: {name}"
+msgstr "Unbekanntes Tool: {name}"
+
+#: gitswitch/mcp.py:91
+#, python-brace-format
+msgid "Method not found: {method}"
+msgstr "Methode nicht gefunden: {method}"
+
+#: gitswitch/mcp.py:101
+msgid "Parse error"
+msgstr "Syntaxfehler"

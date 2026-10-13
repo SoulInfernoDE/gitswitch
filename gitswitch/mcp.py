@@ -10,13 +10,14 @@ import json
 import sys
 
 from . import __version__, core
+from .i18n import _
 
 PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
 
 TOOLS = [
     {
         "name": "list_github_accounts",
-        "description": (
+        "description": _(
             "List the GitHub accounts the GitHub CLI (gh) is logged in to, per host, "
             "including which one is active and whether its token is still valid."
         ),
@@ -25,7 +26,7 @@ TOOLS = [
     },
     {
         "name": "switch_github_account",
-        "description": (
+        "description": _(
             "Switch the active GitHub CLI account (gh auth switch). This changes the account "
             "used by gh and by git over HTTPS for the whole machine, not just this session. "
             "If the user enabled it in Git-Switch, the global git user.name/user.email follow."
@@ -33,10 +34,10 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "user": {"type": "string", "description": "Login name of the account to activate"},
+                "user": {"type": "string", "description": _("Login name of the account to activate")},
                 "hostname": {
                     "type": "string",
-                    "description": "GitHub host, only needed if the login exists on several hosts",
+                    "description": _("GitHub host, only needed if the login exists on several hosts"),
                 },
             },
             "required": ["user"],
@@ -52,9 +53,9 @@ def _call_tool(name: str, arguments: dict) -> dict:
     if name == "switch_github_account":
         user = arguments.get("user")
         if not isinstance(user, str) or not user:
-            raise core.GhError("'user' is required")
+            raise core.GhError(_("'user' is required"))
         return core.switch_account(user, arguments.get("hostname"))
-    raise core.GhError(f"Unknown tool: {name}")
+    raise core.GhError(_("Unknown tool: {name}").format(name=name))
 
 
 def handle(message: dict) -> dict | None:
@@ -87,7 +88,7 @@ def handle(message: dict) -> dict | None:
         except core.GhError as error:
             return reply({"content": [{"type": "text", "text": str(error)}], "isError": True})
         return reply({"content": [{"type": "text", "text": json.dumps(result, indent=2)}]})
-    return reply(error={"code": -32601, "message": f"Method not found: {method}"})
+    return reply(error={"code": -32601, "message": _("Method not found: {method}").format(method=method)})
 
 
 def main() -> int:
@@ -97,7 +98,7 @@ def main() -> int:
         try:
             message = json.loads(line)
         except ValueError:
-            response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
+            response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": _("Parse error")}}
         else:
             response = handle(message) if isinstance(message, dict) else None
         if response is not None:

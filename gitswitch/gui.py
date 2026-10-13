@@ -442,7 +442,9 @@ class Window(Adw.ApplicationWindow):
                 self.toast(done_text.format(host=host), "success")
             else:
                 last_line = output.splitlines()[-1] if output else ""
-                self.toast(f"{_('Sign-in failed')}: {last_line}".rstrip(": "), "error")
+                failed = _("Sign-in failed")
+                text = _("{label}: {detail}").format(label=failed, detail=last_line) if last_line else failed
+                self.toast(text, "error")
             self.reload(recheck=True)
 
         flow = core.LoginFlow(

@@ -46,14 +46,14 @@ Benötigt `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 und libadwaita ≥ 1.4.
 [Release-Seite](../../releases) herunterladen und installieren:
 
 ```bash
-sudo apt install ./gitswitch_0.2.0_all.deb
+sudo apt install ./gitswitch_0.2.1_all.deb
 ```
 
 **Andere Distributionen** – PyGObject, GTK 4 und libadwaita über den
 Paketmanager installieren, dann:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.2.0-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.2.1-py3-none-any.whl
 ```
 
 **Aus dem Quellcode** – `python3 -m gitswitch` in einem Checkout.
@@ -93,8 +93,14 @@ gibt niemals Tokens zurück.
 ```bash
 python3 -m unittest discover -s tests
 packaging/make-sounds.py   # Soundeffekte neu erzeugen
+packaging/update-translations.sh   # Programmtexte extrahieren, Kataloge aktualisieren und kompilieren
 packaging/build-deb.sh
 ```
+
+Programmtexte liegen als gettext-Kataloge unter `gitswitch/locale/`; Englisch
+ist Ausgangssprache und Fallback. Für eine neue Sprache `gitswitch.pot` nach
+`<lang>/LC_MESSAGES/gitswitch.po` kopieren, übersetzen und
+`packaging/update-translations.sh` ausführen.
 
 ## Lizenz
 

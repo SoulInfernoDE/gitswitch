@@ -11,6 +11,9 @@ install -d "$root/DEBIAN" "$root/usr/bin" "$root/usr/lib/python3/dist-packages/g
 install -m 644 gitswitch/*.py "$root/usr/lib/python3/dist-packages/gitswitch/"
 install -m 644 gitswitch/sounds/*.wav "$root/usr/lib/python3/dist-packages/gitswitch/sounds/"
 install -Dm 644 data/dev.gitswitch.GitSwitch.desktop "$root/usr/share/applications/dev.gitswitch.GitSwitch.desktop"
+for catalog in gitswitch/locale/*/LC_MESSAGES/gitswitch.mo; do
+    install -Dm 644 "$catalog" "$root/usr/lib/python3/dist-packages/$catalog"
+done
 icon=icons/hicolor/scalable/apps/dev.gitswitch.GitSwitch.svg
 install -Dm 644 "gitswitch/$icon" "$root/usr/lib/python3/dist-packages/gitswitch/$icon"
 install -Dm 644 "gitswitch/$icon" "$root/usr/share/$icon"

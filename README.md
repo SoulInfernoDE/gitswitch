@@ -46,14 +46,14 @@ Requires `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 and libadwaita ≥ 1.4.
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.2.0_all.deb
+sudo apt install ./gitswitch_0.2.1_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.2.0-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.2.1-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.
@@ -91,8 +91,14 @@ server never returns tokens.
 ```bash
 python3 -m unittest discover -s tests
 packaging/make-sounds.py   # regenerate the sound effects
+packaging/update-translations.sh   # extract program texts, update and compile the catalogs
 packaging/build-deb.sh
 ```
+
+Program texts live in gettext catalogs under `gitswitch/locale/`; English is
+the source language and the fallback. To add a language, copy
+`gitswitch.pot` to `<lang>/LC_MESSAGES/gitswitch.po`, translate it and run
+`packaging/update-translations.sh`.
 
 ## License
 
