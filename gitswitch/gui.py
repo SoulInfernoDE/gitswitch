@@ -94,6 +94,14 @@ class Window(Adw.ApplicationWindow):
         if sound_name and self.settings["sounds"]:
             sound.play(sound_name)
 
+    def explain(self, heading: str, text: str) -> None:
+        """Error that needs more room than a toast."""
+        dialog = Adw.MessageDialog(transient_for=self, heading=heading, body=text)
+        dialog.add_response("close", _("Close"))
+        dialog.present()
+        if self.settings["sounds"]:
+            sound.play("error")
+
     def fail(self, error) -> None:
         self.toast(str(error), "error")
 
@@ -423,9 +431,9 @@ class Window(Adw.ApplicationWindow):
         """Dialog for adding an account: where it lives and how to sign in."""
         places = Adw.ComboRow(
             title=_("Account on"),
-            model=Gtk.StringList.new([_("GitHub.com"), _("Own server")]),
+            model=Gtk.StringList.new([_("GitHub.com"), _("GitHub Enterprise")]),
         )
-        server = Adw.EntryRow(title=_("Address, e.g. github.example.com"), visible=False)
+        server = Adw.EntryRow(title=_("Server address, e.g. github.example.com"), visible=False)
         methods = Adw.ComboRow(
             title=_("Sign-in"),
             model=Gtk.StringList.new([_("In the browser (recommended)"), _("With an access token")]),
@@ -453,14 +461,17 @@ class Window(Adw.ApplicationWindow):
 
         def update(*_args):
             with_token = methods.get_selected() == 1
-            server.set_visible(places.get_selected() == 1)
+            own_server = places.get_selected() == 1
+            server.set_visible(own_server)
             token.set_visible(with_token)
             if with_token:
-                dialog.set_body(_("Paste a personal access token. The button next to the field opens the page to create one."))
+                body = _("Paste a personal access token. The button next to the field opens the page to create one.")
             else:
-                dialog.set_body(
-                    _("Your browser opens GitHub, where you confirm a one-time code. No password is entered here.")
-                )
+                body = _("Your browser opens GitHub, where you confirm a one-time code. No password is entered here.")
+            if own_server:
+                note = _("Only GitHub servers work here. Forgejo, Gitea and GitLab are not supported by the GitHub CLI.")
+                body = f"{body}\n\n{note}"
+            dialog.set_body(body)
             dialog.set_response_enabled("login", bool(host()) and (not with_token or bool(token.get_text().strip())))
 
         def on_token_done(_result, error):
@@ -473,11 +484,17 @@ class Window(Adw.ApplicationWindow):
         def on_response(_dialog, response):
             if response != "login":
                 return
-            if methods.get_selected() == 1:
-                secret = token.get_text()
-                run_async(lambda: core.login_with_token(host(), secret), on_token_done)
-            else:
-                self.login(host())
+            target, secret, with_token = host(), token.get_text(), methods.get_selected() == 1
+
+            def checked(_result, error):
+                if error:
+                    self.explain(_("Sign-in not possible"), str(error))
+                elif with_token:
+                    run_async(lambda: core.login_with_token(target, secret), on_token_done)
+                else:
+                    self.login(target)
+
+            run_async(lambda: core.check_github_server(target), checked)
 
         create.connect("clicked", lambda *_args: Gio.AppInfo.launch_default_for_uri(core.token_page(host()), None))
         for row, signal in ((places, "notify::selected"), (methods, "notify::selected"), (server, "changed"), (token, "changed")):

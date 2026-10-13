@@ -41,7 +41,7 @@ msgstr ""
 msgid "gitswitch: {error}"
 msgstr ""
 
-#: gitswitch/core.py:64 gitswitch/core.py:389
+#: gitswitch/core.py:64 gitswitch/core.py:415
 #, python-brace-format
 msgid "'{command}' was not found in PATH"
 msgstr ""
@@ -75,92 +75,99 @@ msgstr ""
 msgid "'{user}' exists on several hosts; pass a hostname"
 msgstr ""
 
-#: gitswitch/core.py:333
+#: gitswitch/core.py:303
+#, python-brace-format
+msgid ""
+"{host} is a Forgejo or Gitea server. The GitHub CLI (gh) only works with "
+"GitHub.com and GitHub Enterprise Server, so this account cannot be added."
+msgstr ""
+
+#: gitswitch/core.py:359
 msgid "Full access to repositories"
 msgstr ""
 
-#: gitswitch/core.py:334
+#: gitswitch/core.py:360
 msgid "Read organization and team membership"
 msgstr ""
 
-#: gitswitch/core.py:335
+#: gitswitch/core.py:361
 msgid "Create and edit gists"
 msgstr ""
 
-#: gitswitch/core.py:336
+#: gitswitch/core.py:362
 msgid "Update GitHub Actions workflow files"
 msgstr ""
 
-#: gitswitch/core.py:337
+#: gitswitch/core.py:363
 msgid "Delete repositories"
 msgstr ""
 
-#: gitswitch/core.py:338
+#: gitswitch/core.py:364
 msgid "Download packages"
 msgstr ""
 
-#: gitswitch/core.py:339
+#: gitswitch/core.py:365
 msgid "Upload packages"
 msgstr ""
 
-#: gitswitch/core.py:340
+#: gitswitch/core.py:366
 msgid "Delete packages"
 msgstr ""
 
-#: gitswitch/core.py:341
+#: gitswitch/core.py:367
 msgid "Manage SSH keys"
 msgstr ""
 
-#: gitswitch/core.py:342
+#: gitswitch/core.py:368
 msgid "Manage SSH signing keys"
 msgstr ""
 
-#: gitswitch/core.py:343
+#: gitswitch/core.py:369
 msgid "Manage GPG keys"
 msgstr ""
 
-#: gitswitch/core.py:344
+#: gitswitch/core.py:370
 msgid "Read and edit profile data"
 msgstr ""
 
-#: gitswitch/core.py:345
+#: gitswitch/core.py:371
 msgid "Read notifications"
 msgstr ""
 
-#: gitswitch/core.py:346
+#: gitswitch/core.py:372
 msgid "Manage projects"
 msgstr ""
 
-#: gitswitch/core.py:347
+#: gitswitch/core.py:373
 msgid "Read projects"
 msgstr ""
 
-#: gitswitch/core.py:348
+#: gitswitch/core.py:374
 msgid "Create and manage codespaces"
 msgstr ""
 
-#: gitswitch/core.py:349
+#: gitswitch/core.py:375
 msgid "Manage organizations and teams"
 msgstr ""
 
-#: gitswitch/core.py:350
+#: gitswitch/core.py:376
 msgid "Manage repository webhooks"
 msgstr ""
 
-#: gitswitch/core.py:351
+#: gitswitch/core.py:377
 msgid "Read and write security events"
 msgstr ""
 
-#: gitswitch/core.py:352
+#: gitswitch/core.py:378
 msgid "Read and write team discussions"
 msgstr ""
 
-#: gitswitch/core.py:445
+#: gitswitch/core.py:471
 #, python-brace-format
 msgid "{path} does not exist; is Claude Code installed?"
 msgstr ""
 
-#: gitswitch/gui.py:47 gitswitch/gui.py:146 gitswitch/gui.py:445
+#: gitswitch/gui.py:47 gitswitch/gui.py:154 gitswitch/gui.py:453
 msgid "Add account"
 msgstr ""
 
@@ -172,283 +179,297 @@ msgstr ""
 msgid "About"
 msgstr ""
 
-#: gitswitch/gui.py:102
-msgid "Copied to clipboard"
+#: gitswitch/gui.py:100
+msgid "Close"
 msgstr ""
 
 #: gitswitch/gui.py:110
+msgid "Copied to clipboard"
+msgstr ""
+
+#: gitswitch/gui.py:118
 msgid "Switch between GitHub CLI accounts"
 msgstr ""
 
-#: gitswitch/gui.py:138
+#: gitswitch/gui.py:146
 msgid "GitHub CLI not found"
 msgstr ""
 
-#: gitswitch/gui.py:139
+#: gitswitch/gui.py:147
 msgid "Install gh from cli.github.com and start Git-Switch again."
 msgstr ""
 
-#: gitswitch/gui.py:144
+#: gitswitch/gui.py:152
 msgid "No accounts yet"
 msgstr ""
 
-#: gitswitch/gui.py:145
+#: gitswitch/gui.py:153
 msgid "Sign in to GitHub to get started."
 msgstr ""
 
-#: gitswitch/gui.py:181
+#: gitswitch/gui.py:189
 #, python-brace-format
 msgid "Git protocol for {host}: {protocol}"
 msgstr ""
 
-#: gitswitch/gui.py:190
+#: gitswitch/gui.py:198
 #, python-brace-format
 msgid "Git now uses gh to authenticate with {host}"
 msgstr ""
 
-#: gitswitch/gui.py:205
+#: gitswitch/gui.py:213
 msgid "Git protocol"
 msgstr ""
 
-#: gitswitch/gui.py:206
+#: gitswitch/gui.py:214
 msgid "Use gh as Git credential helper"
 msgstr ""
 
-#: gitswitch/gui.py:208
+#: gitswitch/gui.py:216
 msgid "Git settings"
 msgstr ""
 
-#: gitswitch/gui.py:224
+#: gitswitch/gui.py:232
 msgid "Switch"
 msgstr ""
 
-#: gitswitch/gui.py:233
+#: gitswitch/gui.py:241
 msgid "Open profile"
 msgstr ""
 
-#: gitswitch/gui.py:234
+#: gitswitch/gui.py:242
 msgid "Copy token"
 msgstr ""
 
-#: gitswitch/gui.py:235 gitswitch/gui.py:270
+#: gitswitch/gui.py:243 gitswitch/gui.py:278
 msgid "Sign in again"
 msgstr ""
 
-#: gitswitch/gui.py:236 gitswitch/gui.py:403
+#: gitswitch/gui.py:244 gitswitch/gui.py:411
 msgid "Sign out"
 msgstr ""
 
-#: gitswitch/gui.py:240
+#: gitswitch/gui.py:248
 msgid "Change permissions…"
 msgstr ""
 
-#: gitswitch/gui.py:262
+#: gitswitch/gui.py:270
 msgid "Checking token…"
 msgstr ""
 
-#: gitswitch/gui.py:268
+#: gitswitch/gui.py:276
 msgid "Token invalid – sign in again"
 msgstr ""
 
-#: gitswitch/gui.py:273
+#: gitswitch/gui.py:281
 msgid "Token could not be checked"
 msgstr ""
 
-#: gitswitch/gui.py:277
+#: gitswitch/gui.py:285
 msgid "Active"
 msgstr ""
 
-#: gitswitch/gui.py:280
+#: gitswitch/gui.py:288
 #, python-brace-format
 msgid "Permissions: {scopes}"
 msgstr ""
 
-#: gitswitch/gui.py:315
+#: gitswitch/gui.py:323
 #, python-brace-format
 msgid "Switched to {user}"
 msgstr ""
 
-#: gitswitch/gui.py:353
+#: gitswitch/gui.py:361
 msgid "Always required by gh"
 msgstr ""
 
-#: gitswitch/gui.py:357
+#: gitswitch/gui.py:365
 msgid "Other permissions, comma separated"
 msgstr ""
 
-#: gitswitch/gui.py:365 gitswitch/gui.py:502
+#: gitswitch/gui.py:373 gitswitch/gui.py:519
 msgid "Change permissions"
 msgstr ""
 
-#: gitswitch/gui.py:366
+#: gitswitch/gui.py:374
 msgid "Choose what this token may do. You confirm the change in the browser."
 msgstr ""
 
-#: gitswitch/gui.py:369 gitswitch/gui.py:402 gitswitch/gui.py:446
-#: gitswitch/gui.py:506
+#: gitswitch/gui.py:377 gitswitch/gui.py:410 gitswitch/gui.py:454
+#: gitswitch/gui.py:523
 msgid "Cancel"
 msgstr ""
 
-#: gitswitch/gui.py:370
+#: gitswitch/gui.py:378
 msgid "Continue"
 msgstr ""
 
-#: gitswitch/gui.py:399
+#: gitswitch/gui.py:407
 #, python-brace-format
 msgid "Sign out {user}?"
 msgstr ""
 
-#: gitswitch/gui.py:400
+#: gitswitch/gui.py:408
 #, python-brace-format
 msgid "The stored token for this account on {host} will be removed."
 msgstr ""
 
-#: gitswitch/gui.py:410
+#: gitswitch/gui.py:418
 #, python-brace-format
 msgid "Signed out {user}"
 msgstr ""
 
-#: gitswitch/gui.py:425
+#: gitswitch/gui.py:433
 msgid "Account on"
 msgstr ""
 
-#: gitswitch/gui.py:426
+#: gitswitch/gui.py:434
+msgid "GitHub Enterprise"
+msgstr ""
+
+#: gitswitch/gui.py:434
 msgid "GitHub.com"
 msgstr ""
 
-#: gitswitch/gui.py:426
-msgid "Own server"
+#: gitswitch/gui.py:436
+msgid "Server address, e.g. github.example.com"
 msgstr ""
 
-#: gitswitch/gui.py:428
-msgid "Address, e.g. github.example.com"
-msgstr ""
-
-#: gitswitch/gui.py:430
+#: gitswitch/gui.py:438
 msgid "Sign-in"
 msgstr ""
 
-#: gitswitch/gui.py:431
+#: gitswitch/gui.py:439
 msgid "In the browser (recommended)"
 msgstr ""
 
-#: gitswitch/gui.py:431
+#: gitswitch/gui.py:439
 msgid "With an access token"
 msgstr ""
 
-#: gitswitch/gui.py:433
+#: gitswitch/gui.py:441
 msgid "Access token"
 msgstr ""
 
-#: gitswitch/gui.py:435
+#: gitswitch/gui.py:443
 msgid "Create a token on GitHub"
 msgstr ""
 
-#: gitswitch/gui.py:447
+#: gitswitch/gui.py:455
 msgid "Sign in"
 msgstr ""
 
-#: gitswitch/gui.py:459
+#: gitswitch/gui.py:468
 msgid ""
 "Paste a personal access token. The button next to the field opens the page "
 "to create one."
 msgstr ""
 
-#: gitswitch/gui.py:462
+#: gitswitch/gui.py:470
 msgid ""
 "Your browser opens GitHub, where you confirm a one-time code. No password is "
 "entered here."
 msgstr ""
 
-#: gitswitch/gui.py:470 gitswitch/gui.py:521
+#: gitswitch/gui.py:472
+msgid ""
+"Only GitHub servers work here. Forgejo, Gitea and GitLab are not supported "
+"by the GitHub CLI."
+msgstr ""
+
+#: gitswitch/gui.py:481 gitswitch/gui.py:538
 #, python-brace-format
 msgid "Signed in to {host}"
 msgstr ""
 
-#: gitswitch/gui.py:492
+#: gitswitch/gui.py:491
+msgid "Sign-in not possible"
+msgstr ""
+
+#: gitswitch/gui.py:509
 msgid "Copy code"
 msgstr ""
 
-#: gitswitch/gui.py:495
+#: gitswitch/gui.py:512
 msgid "Open the sign-in page again"
 msgstr ""
 
-#: gitswitch/gui.py:502
+#: gitswitch/gui.py:519
 #, python-brace-format
 msgid "Sign in to {host}"
 msgstr ""
 
-#: gitswitch/gui.py:503
+#: gitswitch/gui.py:520
 msgid "Starting sign-in…"
 msgstr ""
 
-#: gitswitch/gui.py:513
+#: gitswitch/gui.py:530
 msgid ""
 "Paste this code in the browser page that just opened. It is already in the "
 "clipboard."
 msgstr ""
 
-#: gitswitch/gui.py:521
+#: gitswitch/gui.py:538
 #, python-brace-format
 msgid "Token renewed for {host}"
 msgstr ""
 
-#: gitswitch/gui.py:525
+#: gitswitch/gui.py:542
 msgid "Sign-in failed"
 msgstr ""
 
-#: gitswitch/gui.py:526
+#: gitswitch/gui.py:543
 #, python-brace-format
 msgid "{label}: {detail}"
 msgstr ""
 
-#: gitswitch/gui.py:555
+#: gitswitch/gui.py:572
 msgid "Options"
 msgstr ""
 
-#: gitswitch/gui.py:557
+#: gitswitch/gui.py:574
 msgid "Sync Git identity"
 msgstr ""
 
-#: gitswitch/gui.py:565 gitswitch/gui.py:572
+#: gitswitch/gui.py:582 gitswitch/gui.py:589
 msgid "Claude Code integration"
 msgstr ""
 
-#: gitswitch/gui.py:566
+#: gitswitch/gui.py:583
 msgid "Register the MCP server so Claude Code can switch accounts"
 msgstr ""
 
-#: gitswitch/gui.py:573
+#: gitswitch/gui.py:590
 msgid "Claude Code was not found – copy the setup command instead"
 msgstr ""
 
-#: gitswitch/gui.py:575
+#: gitswitch/gui.py:592
 msgid "Copy command"
 msgstr ""
 
-#: gitswitch/gui.py:581
+#: gitswitch/gui.py:598
 msgid "Sound effects"
 msgstr ""
 
-#: gitswitch/gui.py:588
+#: gitswitch/gui.py:605
 msgid "not set"
 msgstr ""
 
-#: gitswitch/gui.py:590
+#: gitswitch/gui.py:607
 #, python-brace-format
 msgid "Set global user.name and user.email when switching. Current: {identity}"
 msgstr ""
 
-#: gitswitch/gui.py:608
+#: gitswitch/gui.py:625
 #, python-brace-format
 msgid "Git identity set to {identity}"
 msgstr ""
 
-#: gitswitch/gui.py:636
+#: gitswitch/gui.py:653
 msgid "MCP server registered in Claude Code"
 msgstr ""
 
-#: gitswitch/gui.py:638
+#: gitswitch/gui.py:655
 msgid "MCP server removed from Claude Code"
 msgstr ""
 

@@ -23,8 +23,8 @@ heraus über den mitgelieferten MCP-Server.
 - Listet alle Konten pro Host mit Avatar, Aktiv-Markierung und Live-Prüfung,
   ob das gespeicherte Token noch funktioniert
 - Wechsel mit einem Klick (`gh auth switch`)
-- Konten über einen geführten Dialog hinzufügen: GitHub.com oder eigener Server,
-  Anmeldung im Browser oder mit Zugriffstoken – ganz ohne Terminal
+- Konten über einen geführten Dialog hinzufügen: GitHub.com oder GitHub
+  Enterprise, Anmeldung im Browser oder mit Zugriffstoken – ganz ohne Terminal
 - Einzelne Konten abmelden
 - Zeigt die Berechtigungen (Scopes) jedes Tokens; hinzufügen oder entfernen per
   Häkchen in einer Liste mit Beschreibungen (`gh auth refresh`)
@@ -38,6 +38,9 @@ heraus über den mitgelieferten MCP-Server.
 - Dezente Soundeffekte für Wechsel, Anmeldung und Fehler (abschaltbar)
 - Oberfläche auf Deutsch und Englisch
 
+Git-Switch baut auf der GitHub CLI auf und funktioniert deshalb nur mit
+GitHub.com und GitHub Enterprise Server – nicht mit Forgejo, Gitea oder GitLab.
+
 ## Installation
 
 Benötigt `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 und libadwaita ≥ 1.4.
@@ -46,14 +49,14 @@ Benötigt `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 und libadwaita ≥ 1.4.
 [Release-Seite](../../releases) herunterladen und installieren:
 
 ```bash
-sudo apt install ./gitswitch_0.2.4_all.deb
+sudo apt install ./gitswitch_0.2.5_all.deb
 ```
 
 **Andere Distributionen** – PyGObject, GTK 4 und libadwaita über den
 Paketmanager installieren, dann:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.2.4-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.2.5-py3-none-any.whl
 ```
 
 **Aus dem Quellcode** – `python3 -m gitswitch` in einem Checkout.

@@ -280,6 +280,32 @@ def normalize_host(text: str) -> str:
     return host.split("/", 1)[0]
 
 
+def _reachable(url: str) -> bool:
+    request = urllib.request.Request(url, headers={"User-Agent": f"gitswitch/{__version__}"})
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            return response.status == 200
+    except (OSError, ValueError):
+        return False
+
+
+def check_github_server(host: str) -> None:
+    """Refuse servers gh cannot talk to before starting a sign-in that must fail.
+
+    gh only speaks the GitHub API. Forgejo and Gitea are recognised by their
+    own API; anything undetermined is left to gh.
+    """
+    if host == DEFAULT_HOST or _reachable(f"https://{host}/api/v3/meta"):
+        return
+    if _reachable(f"https://{host}/api/v1/version"):
+        raise GhError(
+            _(
+                "{host} is a Forgejo or Gitea server. The GitHub CLI (gh) only works with GitHub.com and "
+                "GitHub Enterprise Server, so this account cannot be added."
+            ).format(host=host)
+        )
+
+
 def token_page(host: str) -> str:
     """Page where a personal access token with the scopes gh needs can be created."""
     return f"https://{host}/settings/tokens/new?scopes=repo,read:org,gist,workflow&description=Git-Switch"

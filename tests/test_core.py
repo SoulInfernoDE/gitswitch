@@ -82,6 +82,20 @@ class HostsFileTest(unittest.TestCase):
         self.assertEqual(core.normalize_host("github.com"), "github.com")
         self.assertEqual(core.normalize_host("  "), "")
 
+    def test_check_github_server(self):
+        def reachable(*paths):
+            return mock.patch.object(core, "_reachable", side_effect=lambda url: url.endswith(paths))
+
+        with mock.patch.object(core, "_reachable") as probe:
+            core.check_github_server("github.com")
+        probe.assert_not_called()
+        with reachable("/api/v3/meta"):
+            core.check_github_server("ghe.example.com")
+        with reachable("/api/v1/version"), self.assertRaises(core.GhError):
+            core.check_github_server("forgejo.example.com")
+        with reachable("/nothing"):
+            core.check_github_server("unknown.example.com")
+
     def test_login_with_token_passes_token_on_stdin(self):
         with mock.patch.object(core.subprocess, "run") as run:
             run.return_value = mock.Mock(returncode=0, stdout="", stderr="")
