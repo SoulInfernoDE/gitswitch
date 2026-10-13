@@ -34,7 +34,7 @@ def run_async(func, callback) -> None:
 
 class Window(Adw.ApplicationWindow):
     def __init__(self, app: Adw.Application):
-        super().__init__(application=app, title="Git-Switch", default_width=460, default_height=660)
+        super().__init__(application=app, title="Git-Switch", default_width=460, default_height=760)
         self.settings = core.load_settings()
         self.profiles: dict[core.Account, core.Profile] = {}
         self.avatars: dict[str, Gdk.Texture] = {}
@@ -43,12 +43,7 @@ class Window(Adw.ApplicationWindow):
         self.reload_source = 0
         self.busy_toggle = False
 
-        title = Gtk.Box(spacing=8)
-        title.append(Gtk.Image(icon_name=ICON_NAME, pixel_size=24))
-        title_label = Gtk.Label(label="Git-Switch")
-        title_label.add_css_class("title")
-        title.append(title_label)
-        header = Adw.HeaderBar(title_widget=title)
+        header = Adw.HeaderBar()
         add_button = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=_("Add account"))
         add_button.connect("clicked", lambda *_args: self.ask_host())
         header.pack_start(add_button)
@@ -60,6 +55,9 @@ class Window(Adw.ApplicationWindow):
         header.pack_end(refresh_button)
 
         self.page = Adw.PreferencesPage()
+        logo = Adw.PreferencesGroup()
+        logo.add(Gtk.Image(icon_name=ICON_NAME, pixel_size=128, halign=Gtk.Align.CENTER))
+        self.page.add(logo)
         self.status = Adw.StatusPage(icon_name=ICON_NAME)
         self.stack = Gtk.Stack()
         self.stack.add_named(self.page, "accounts")
@@ -75,6 +73,8 @@ class Window(Adw.ApplicationWindow):
             ("login", self.on_login_action, "s"),
             ("logout", self.on_logout_action, "(ss)"),
             ("profile", self.on_profile_action, "(ss)"),
+            ("copy-token", self.on_copy_token_action, "(ss)"),
+            ("scopes", self.on_scopes_action, "s"),
         ):
             action = Gio.SimpleAction.new(name, GLib.VariantType.new(parameter))
             action.connect("activate", handler)
@@ -155,7 +155,7 @@ class Window(Adw.ApplicationWindow):
         groups: dict[str, Adw.PreferencesGroup] = {}
         for account in accounts:
             if account.host not in groups:
-                group = groups[account.host] = Adw.PreferencesGroup(title=account.host)
+                group = groups[account.host] = self.build_host_group(account.host)
                 self.host_groups.append(group)
             groups[account.host].add(self.build_row(account))
         # Keep the options group below the accounts.
@@ -163,6 +163,53 @@ class Window(Adw.ApplicationWindow):
         for group in self.host_groups:
             self.page.add(group)
         self.page.add(self.options)
+
+    def build_host_group(self, host: str) -> Adw.PreferencesGroup:
+        """Group for one host; its menu holds the per-host git settings of gh."""
+        group = Adw.PreferencesGroup(title=host)
+        actions = Gio.SimpleActionGroup()
+        protocol = Gio.SimpleAction.new_stateful(
+            "protocol", GLib.VariantType.new("s"), GLib.Variant("s", core.git_protocol(host) or "https")
+        )
+
+        def on_protocol(action, value):
+            def done(_result, error):
+                if error:
+                    self.fail(error)
+                    return
+                action.set_state(value)
+                self.toast(_("Git protocol for {host}: {protocol}").format(host=host, protocol=value.unpack().upper()))
+
+            run_async(lambda: core.set_git_protocol(host, value.unpack()), done)
+
+        def on_setup_git(*_args):
+            def done(_result, error):
+                if error:
+                    self.fail(error)
+                else:
+                    self.toast(_("Git now uses gh to authenticate with {host}").format(host=host))
+
+            run_async(lambda: core.setup_git(host), done)
+
+        protocol.connect("activate", on_protocol)
+        setup = Gio.SimpleAction.new("setup-git", None)
+        setup.connect("activate", on_setup_git)
+        actions.add_action(protocol)
+        actions.add_action(setup)
+        group.insert_action_group("host", actions)
+
+        protocols = Gio.Menu()
+        protocols.append("HTTPS", "host.protocol::https")
+        protocols.append("SSH", "host.protocol::ssh")
+        menu = Gio.Menu()
+        menu.append_section(_("Git protocol"), protocols)
+        menu.append(_("Use gh as Git credential helper"), "host.setup-git")
+        button = Gtk.MenuButton(
+            icon_name="emblem-system-symbolic", menu_model=menu, valign=Gtk.Align.CENTER, tooltip_text=_("Git settings")
+        )
+        button.add_css_class("flat")
+        group.set_header_suffix(button)
+        return group
 
     def build_row(self, account: core.Account) -> Adw.ActionRow:
         row = Adw.ActionRow(title=account.user, use_markup=False)
@@ -182,11 +229,16 @@ class Window(Adw.ApplicationWindow):
 
         target = GLib.Variant("(ss)", (account.host, account.user))
         menu = Gio.Menu()
-        for label, action, value in (
+        items = [
             (_("Open profile"), "win.profile", target),
+            (_("Copy token"), "win.copy-token", target),
             (_("Sign in again"), "win.login", GLib.Variant("s", account.host)),
             (_("Sign out"), "win.logout", target),
-        ):
+        ]
+        if account.active:
+            # gh can only refresh the token of the active account.
+            items.insert(2, (_("Change permissions…"), "win.scopes", GLib.Variant("s", account.host)))
+        for label, action, value in items:
             item = Gio.MenuItem.new(label, None)
             item.set_action_and_target_value(action, value)
             menu.append_item(item)
@@ -223,7 +275,10 @@ class Window(Adw.ApplicationWindow):
         parts = [profile.name] if profile.name else []
         if account.active:
             parts.append(_("Active"))
-        row.set_subtitle(" · ".join(parts))
+        lines = [" · ".join(parts)] if parts else []
+        if profile.scopes:
+            lines.append(_("Permissions: {scopes}").format(scopes=", ".join(profile.scopes)))
+        row.set_subtitle("\n".join(lines))
 
         url = profile.avatar_url
         if not url:
@@ -266,6 +321,42 @@ class Window(Adw.ApplicationWindow):
     def on_profile_action(self, _action, parameter) -> None:
         host, user = parameter.unpack()
         Gio.AppInfo.launch_default_for_uri(f"https://{host}/{user}", None)
+
+    def on_copy_token_action(self, _action, parameter) -> None:
+        host, user = parameter.unpack()
+
+        def done(token, error):
+            if error:
+                self.fail(error)
+            else:
+                self.copy(token)
+
+        run_async(lambda: core.get_token(core.Account(host, user, False)), done)
+
+    def on_scopes_action(self, _action, parameter) -> None:
+        host = parameter.unpack()
+        entry = Adw.EntryRow(title=_("Additional permissions, e.g. workflow, delete_repo"), activates_default=True)
+        box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        box.add_css_class("boxed-list")
+        box.append(entry)
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading=_("Change permissions"),
+            body=_("Renews the token in the browser. Leave the field empty to keep the current permissions."),
+            extra_child=box,
+        )
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("refresh", _("Continue"))
+        dialog.set_response_appearance("refresh", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("refresh")
+
+        def on_response(_dialog, response):
+            if response == "refresh":
+                scopes = ",".join(scope.strip() for scope in entry.get_text().split(",") if scope.strip())
+                self.login(host, refresh=True, scopes=scopes)
+
+        dialog.connect("response", on_response)
+        dialog.present()
 
     def on_login_action(self, _action, parameter) -> None:
         self.login(parameter.unpack())
@@ -319,7 +410,7 @@ class Window(Adw.ApplicationWindow):
         dialog.connect("response", on_response)
         dialog.present()
 
-    def login(self, host: str) -> None:
+    def login(self, host: str, refresh: bool = False, scopes: str = "") -> None:
         code_label = Gtk.Label(selectable=True)
         code_label.add_css_class("title-1")
         copy_button = Gtk.Button(label=_("Copy code"), halign=Gtk.Align.CENTER, sensitive=False)
@@ -329,7 +420,7 @@ class Window(Adw.ApplicationWindow):
         box.append(copy_button)
         dialog = Adw.MessageDialog(
             transient_for=self,
-            heading=_("Sign in to {host}").format(host=host),
+            heading=(_("Change permissions") if refresh else _("Sign in to {host}").format(host=host)),
             body=_("Starting sign-in…"),
             extra_child=box,
         )
@@ -347,7 +438,8 @@ class Window(Adw.ApplicationWindow):
             state["open"] = False
             dialog.close()
             if status == 0:
-                self.toast(_("Signed in to {host}").format(host=host), "success")
+                done_text = _("Token renewed for {host}") if refresh else _("Signed in to {host}")
+                self.toast(done_text.format(host=host), "success")
             else:
                 last_line = output.splitlines()[-1] if output else ""
                 self.toast(f"{_('Sign-in failed')}: {last_line}".rstrip(": "), "error")
@@ -357,6 +449,8 @@ class Window(Adw.ApplicationWindow):
             host,
             lambda code: GLib.idle_add(lambda: on_code(code) and False),
             lambda status, output: GLib.idle_add(lambda: on_done(status, output) and False),
+            refresh=refresh,
+            scopes=scopes,
         )
 
         def on_response(_dialog, _response):

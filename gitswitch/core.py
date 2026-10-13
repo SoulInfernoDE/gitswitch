@@ -274,6 +274,19 @@ def logout_account(account: Account) -> None:
     _run(["gh", "auth", "logout", "--hostname", account.host, "--user", account.user])
 
 
+def get_token(account: Account) -> str:
+    return _run(["gh", "auth", "token", "--hostname", account.host, "--user", account.user]).stdout.strip()
+
+
+def set_git_protocol(host: str, protocol: str) -> None:
+    _run(["gh", "config", "set", "git_protocol", protocol, "--host", host])
+
+
+def setup_git(host: str) -> None:
+    """Make git use gh as credential helper for ``host`` (``gh auth setup-git``)."""
+    _run(["gh", "auth", "setup-git", "--hostname", host])
+
+
 def describe_accounts(check_tokens: bool = True) -> list[dict]:
     """Plain-data view of all accounts, used by the CLI and the MCP server."""
     described = []
@@ -287,20 +300,27 @@ def describe_accounts(check_tokens: bool = True) -> list[dict]:
 
 
 class LoginFlow:
-    """Drive ``gh auth login --web`` without a terminal.
+    """Drive ``gh auth login --web`` or ``gh auth refresh`` without a terminal.
 
-    ``on_code`` receives the one-time device code, ``on_done`` the exit status
+    With ``refresh`` the token of the active account is renewed, adding the
+    comma separated ``scopes`` if given. ``on_code`` receives the one-time device code, ``on_done`` the exit status
     and collected output. Both are called from a worker thread.
     """
 
-    def __init__(self, host: str, on_code, on_done):
+    def __init__(self, host: str, on_code, on_done, refresh: bool = False, scopes: str = ""):
         self.host, self._on_code, self._on_done = host, on_code, on_done
+        self.refresh, self.scopes = refresh, scopes
         self._proc: subprocess.Popen | None = None
 
     def start(self) -> None:
-        args = ["gh", "auth", "login", "--hostname", self.host, "--web"]
-        if git_protocol(self.host):
-            args += ["--git-protocol", git_protocol(self.host)]
+        if self.refresh:
+            args = ["gh", "auth", "refresh", "--hostname", self.host]
+        else:
+            args = ["gh", "auth", "login", "--hostname", self.host, "--web"]
+            if git_protocol(self.host):
+                args += ["--git-protocol", git_protocol(self.host)]
+        if self.scopes:
+            args += ["--scopes", self.scopes]
         try:
             self._proc = subprocess.Popen(
                 args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True

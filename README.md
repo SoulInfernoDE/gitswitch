@@ -26,6 +26,11 @@ through the bundled MCP server.
 - Add accounts or re-authenticate expired ones with the browser device flow –
   no terminal needed
 - Sign out of single accounts
+- Shows the permissions (scopes) of each token and lets you add more
+  (`gh auth refresh`)
+- Copy an account's token to the clipboard (`gh auth token`)
+- Per host: choose HTTPS or SSH as git protocol and set up gh as git
+  credential helper (`gh auth setup-git`)
 - Optional: keep the global git `user.name` / `user.email` in sync with the
   active account (uses the account's GitHub noreply address)
 - Follows changes made elsewhere (the `gh` CLI, the MCP server) immediately
@@ -41,14 +46,14 @@ Requires `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 and libadwaita ≥ 1.4.
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.1.2_all.deb
+sudo apt install ./gitswitch_0.2.0_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.1.2-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.2.0-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.

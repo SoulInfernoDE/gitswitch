@@ -26,6 +26,11 @@ heraus über den mitgelieferten MCP-Server.
 - Konten hinzufügen oder abgelaufene neu anmelden über den Browser – ganz ohne
   Terminal
 - Einzelne Konten abmelden
+- Zeigt die Berechtigungen (Scopes) jedes Tokens und kann weitere hinzufügen
+  (`gh auth refresh`)
+- Token eines Kontos in die Zwischenablage kopieren (`gh auth token`)
+- Pro Host: HTTPS oder SSH als Git-Protokoll wählen und gh als
+  Git-Anmeldehelfer einrichten (`gh auth setup-git`)
 - Optional: globales git `user.name` / `user.email` folgt dem aktiven Konto
   (verwendet die GitHub-noreply-Adresse des Kontos)
 - Übernimmt Änderungen von außen (`gh` CLI, MCP-Server) sofort
@@ -41,14 +46,14 @@ Benötigt `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 und libadwaita ≥ 1.4.
 [Release-Seite](../../releases) herunterladen und installieren:
 
 ```bash
-sudo apt install ./gitswitch_0.1.2_all.deb
+sudo apt install ./gitswitch_0.2.0_all.deb
 ```
 
 **Andere Distributionen** – PyGObject, GTK 4 und libadwaita über den
 Paketmanager installieren, dann:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.1.2-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.2.0-py3-none-any.whl
 ```
 
 **Aus dem Quellcode** – `python3 -m gitswitch` in einem Checkout.
