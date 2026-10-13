@@ -24,6 +24,18 @@ def gh(*args: str) -> str:
     return subprocess.run(["gh", *args], capture_output=True, text=True, check=True).stdout
 
 
+def download(source: str, tag: str, name: str, directory: str) -> None:
+    """Fetch one asset; GitHub may need a moment before a just-published asset can be downloaded."""
+    for attempt in range(5):
+        try:
+            gh("release", "download", tag, "--repo", source, "--dir", directory, "--pattern", name)
+            return
+        except subprocess.CalledProcessError as error:
+            if attempt == 4:
+                sys.exit(f"cannot download {name} of {tag}: {error.stderr.strip()}")
+            time.sleep(5)
+
+
 def wait_for_tags(host: str, target: str, tags: list[str], timeout: int = 180) -> None:
     """Sync the mirror until it has all ``tags``; a release without its tag would point at the wrong commit."""
     forge.api("POST", f"/repos/{target}/mirror-sync", host=host)
@@ -55,7 +67,7 @@ def main() -> int:
         missing = [asset["name"] for asset in release["assets"] if asset["name"] not in have]
         with tempfile.TemporaryDirectory() as directory:
             for name in missing:
-                gh("release", "download", tag, "--repo", source, "--dir", directory, "--pattern", name)
+                download(source, tag, name, directory)
                 forge.upload_release_asset(target, tag, str(Path(directory, name)), host)
         if missing or tag not in present:
             print(f"{tag}: release {'created' if tag not in present else 'kept'}, {len(missing)} asset(s) copied")
