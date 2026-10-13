@@ -1,0 +1,110 @@
+"""Minimal MCP server (stdio transport) exposing account switching as tools.
+
+Implements just the parts of the Model Context Protocol that a tool-only
+server needs, so no third-party SDK is required.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+
+from . import __version__, core
+
+PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
+
+TOOLS = [
+    {
+        "name": "list_github_accounts",
+        "description": (
+            "List the GitHub accounts the GitHub CLI (gh) is logged in to, per host, "
+            "including which one is active and whether its token is still valid."
+        ),
+        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+        "annotations": {"readOnlyHint": True},
+    },
+    {
+        "name": "switch_github_account",
+        "description": (
+            "Switch the active GitHub CLI account (gh auth switch). This changes the account "
+            "used by gh and by git over HTTPS for the whole machine, not just this session. "
+            "If the user enabled it in gitswitch, the global git user.name/user.email follow."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "user": {"type": "string", "description": "Login name of the account to activate"},
+                "hostname": {
+                    "type": "string",
+                    "description": "GitHub host, only needed if the login exists on several hosts",
+                },
+            },
+            "required": ["user"],
+            "additionalProperties": False,
+        },
+    },
+]
+
+
+def _call_tool(name: str, arguments: dict) -> dict:
+    if name == "list_github_accounts":
+        return {"accounts": core.describe_accounts()}
+    if name == "switch_github_account":
+        user = arguments.get("user")
+        if not isinstance(user, str) or not user:
+            raise core.GhError("'user' is required")
+        return core.switch_account(user, arguments.get("hostname"))
+    raise core.GhError(f"Unknown tool: {name}")
+
+
+def handle(message: dict) -> dict | None:
+    """Handle one JSON-RPC message; returns the response or None for notifications."""
+    method, params = message.get("method"), message.get("params") or {}
+    if "id" not in message:
+        return None
+
+    def reply(result=None, error=None) -> dict:
+        response = {"jsonrpc": "2.0", "id": message["id"]}
+        response.update({"error": error} if error else {"result": result})
+        return response
+
+    if method == "initialize":
+        requested = params.get("protocolVersion")
+        return reply(
+            {
+                "protocolVersion": requested if requested in PROTOCOL_VERSIONS else PROTOCOL_VERSIONS[0],
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "gitswitch", "version": __version__},
+            }
+        )
+    if method == "ping":
+        return reply({})
+    if method == "tools/list":
+        return reply({"tools": TOOLS})
+    if method == "tools/call":
+        try:
+            result = _call_tool(params.get("name", ""), params.get("arguments") or {})
+        except core.GhError as error:
+            return reply({"content": [{"type": "text", "text": str(error)}], "isError": True})
+        return reply({"content": [{"type": "text", "text": json.dumps(result, indent=2)}]})
+    return reply(error={"code": -32601, "message": f"Method not found: {method}"})
+
+
+def main() -> int:
+    for line in sys.stdin:
+        if not line.strip():
+            continue
+        try:
+            message = json.loads(line)
+        except ValueError:
+            response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
+        else:
+            response = handle(message) if isinstance(message, dict) else None
+        if response is not None:
+            sys.stdout.write(json.dumps(response) + "\n")
+            sys.stdout.flush()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

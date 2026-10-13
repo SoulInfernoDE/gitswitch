@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=gitswitch
+GenericName=GitHub Account Switcher
+GenericName[de]=GitHub-Kontowechsler
+Comment=Switch between GitHub CLI accounts
+Comment[de]=Zwischen GitHub-CLI-Konten wechseln
+Exec=gitswitch
+Icon=dev.gitswitch.GitSwitch
+Terminal=false
+Categories=Development;RevisionControl;GTK;
+Keywords=github;gh;account;git;
+StartupWMClass=dev.gitswitch.GitSwitch

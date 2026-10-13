@@ -1,0 +1,96 @@
+import json
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from gitswitch import core, mcp
+
+HOSTS = """\
+github.com:
+    git_protocol: https
+    users:
+        alice:
+        Bob:
+            oauth_token: gho_example
+    user: alice
+ghe.example.com:
+    oauth_token: gho_legacy
+    user: carol
+"""
+
+
+class HostsFileTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        Path(self.dir.name, "hosts.yml").write_text(HOSTS)
+        patcher = mock.patch.dict(os.environ, {"GH_CONFIG_DIR": self.dir.name})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_parse_accounts(self):
+        self.assertEqual(
+            core.list_accounts(),
+            [
+                core.Account("github.com", "alice", True),
+                core.Account("github.com", "Bob", False),
+                core.Account("ghe.example.com", "carol", True),
+            ],
+        )
+        self.assertEqual(core.git_protocol("github.com"), "https")
+        self.assertEqual(core.git_protocol("ghe.example.com"), "")
+
+    def test_missing_file(self):
+        os.remove(Path(self.dir.name, "hosts.yml"))
+        self.assertEqual(core.list_accounts(), [])
+
+    def test_find_account(self):
+        self.assertEqual(core.find_account("bob").user, "Bob")
+        self.assertEqual(core.find_account("carol", "ghe.example.com").host, "ghe.example.com")
+        with self.assertRaises(core.GhError):
+            core.find_account("carol", "github.com")
+        with self.assertRaises(core.GhError):
+            core.find_account("nobody")
+
+    def test_switch_runs_gh(self):
+        with mock.patch.object(core, "_run") as run:
+            result = core.switch_account("bob", sync_identity=False)
+        run.assert_called_once_with(["gh", "auth", "switch", "--hostname", "github.com", "--user", "Bob"])
+        self.assertEqual(result, {"host": "github.com", "user": "Bob", "git_identity": None})
+
+    def test_noreply_email(self):
+        profile = core.Profile(valid=True, login="alice", user_id=42)
+        self.assertEqual(core.noreply_email("github.com", profile), "42+alice@users.noreply.github.com")
+
+
+class McpTest(unittest.TestCase):
+    def call(self, method, params=None, **extra):
+        return mcp.handle({"jsonrpc": "2.0", "id": 1, "method": method, "params": params or {}, **extra})
+
+    def test_initialize_and_list(self):
+        result = self.call("initialize", {"protocolVersion": "2024-11-05"})["result"]
+        self.assertEqual(result["protocolVersion"], "2024-11-05")
+        names = [tool["name"] for tool in self.call("tools/list")["result"]["tools"]]
+        self.assertEqual(names, ["list_github_accounts", "switch_github_account"])
+
+    def test_notification_has_no_response(self):
+        self.assertIsNone(mcp.handle({"jsonrpc": "2.0", "method": "notifications/initialized"}))
+
+    def test_switch_tool(self):
+        switched = {"host": "github.com", "user": "Bob", "git_identity": None}
+        with mock.patch.object(core, "switch_account", return_value=switched) as switch:
+            result = self.call("tools/call", {"name": "switch_github_account", "arguments": {"user": "bob"}})["result"]
+        switch.assert_called_once_with("bob", None)
+        self.assertEqual(json.loads(result["content"][0]["text"]), switched)
+
+    def test_tool_error(self):
+        with mock.patch.object(core, "switch_account", side_effect=core.GhError("boom")):
+            result = self.call("tools/call", {"name": "switch_github_account", "arguments": {"user": "x"}})["result"]
+        self.assertTrue(result["isError"])
+        self.assertEqual(self.call("nope")["error"]["code"], -32601)
+
+
+if __name__ == "__main__":
+    unittest.main()

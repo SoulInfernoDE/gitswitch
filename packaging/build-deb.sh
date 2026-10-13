@@ -1,0 +1,37 @@
+#!/bin/sh
+# Build dist/gitswitch_<version>_all.deb from the source tree.
+set -eu
+cd "$(dirname "$0")/.."
+
+version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' gitswitch/__init__.py)
+root=$(mktemp -d)
+trap 'rm -rf "$root"' EXIT
+
+install -d "$root/DEBIAN" "$root/usr/bin" "$root/usr/lib/python3/dist-packages/gitswitch"
+install -m 644 gitswitch/*.py "$root/usr/lib/python3/dist-packages/gitswitch/"
+install -Dm 644 data/dev.gitswitch.GitSwitch.desktop "$root/usr/share/applications/dev.gitswitch.GitSwitch.desktop"
+install -Dm 644 data/dev.gitswitch.GitSwitch.svg "$root/usr/share/icons/hicolor/scalable/apps/dev.gitswitch.GitSwitch.svg"
+install -Dm 644 LICENSE "$root/usr/share/doc/gitswitch/copyright"
+
+for entry in "gitswitch:gitswitch.__main__" "gitswitch-mcp:gitswitch.mcp"; do
+    printf '#!/usr/bin/python3\nimport sys\nfrom %s import main\nsys.exit(main())\n' "${entry#*:}" > "$root/usr/bin/${entry%%:*}"
+    chmod 755 "$root/usr/bin/${entry%%:*}"
+done
+
+cat > "$root/DEBIAN/control" <<CONTROL
+Package: gitswitch
+Version: $version
+Architecture: all
+Maintainer: gitswitch contributors
+Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1 (>= 1.4), gh, git
+Section: devel
+Priority: optional
+Description: GUI and MCP server for switching GitHub CLI accounts
+ A small GTK window around "gh auth switch" that lists the accounts gh is
+ logged in to, shows whether their tokens are still valid and switches
+ between them, optionally keeping the global git identity in sync. Ships an
+ MCP server so coding agents can switch accounts as well.
+CONTROL
+
+mkdir -p dist
+dpkg-deb --build --root-owner-group "$root" "dist/gitswitch_${version}_all.deb"
