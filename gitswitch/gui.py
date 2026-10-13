@@ -34,7 +34,7 @@ def run_async(func, callback) -> None:
 
 class Window(Adw.ApplicationWindow):
     def __init__(self, app: Adw.Application):
-        super().__init__(application=app, title="Git-Switch", default_width=460, default_height=760)
+        super().__init__(application=app, title="Git-Switch", default_width=460, default_height=800)
         self.settings = core.load_settings()
         self.profiles: dict[core.Account, core.Profile] = {}
         self.avatars: dict[str, Gdk.Texture] = {}
