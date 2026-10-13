@@ -18,8 +18,9 @@ TOOLS = [
     {
         "name": "list_github_accounts",
         "description": _(
-            "List the GitHub accounts the GitHub CLI (gh) is logged in to, per host, "
-            "including which one is active and whether its token is still valid."
+            "List the accounts Git-Switch manages, per host: the GitHub accounts the GitHub CLI (gh) is "
+            "logged in to and Forgejo or Gitea accounts, including which one is active and whether its "
+            "token is still valid. Tokens are never returned."
         ),
         "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
         "annotations": {"readOnlyHint": True},
@@ -27,8 +28,8 @@ TOOLS = [
     {
         "name": "switch_github_account",
         "description": _(
-            "Switch the active GitHub CLI account (gh auth switch). This changes the account "
-            "used by gh and by git over HTTPS for the whole machine, not just this session. "
+            "Switch the active account of a host: gh auth switch for GitHub, or the account git uses "
+            "for a Forgejo or Gitea host. This applies to the whole machine, not just this session. "
             "If the user enabled it in Git-Switch, the global git user.name/user.email follow."
         ),
         "inputSchema": {
@@ -37,7 +38,7 @@ TOOLS = [
                 "user": {"type": "string", "description": _("Login name of the account to activate")},
                 "hostname": {
                     "type": "string",
-                    "description": _("GitHub host, only needed if the login exists on several hosts"),
+                    "description": _("Host name, only needed if the login exists on several hosts"),
                 },
             },
             "required": ["user"],

@@ -13,7 +13,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import __version__, core, sound  # noqa: E402
+from . import __version__, core, forge, sound  # noqa: E402
 from .i18n import _  # noqa: E402
 
 APP_ID = ICON_NAME = "dev.gitswitch.GitSwitch"
@@ -71,6 +71,7 @@ class Window(Adw.ApplicationWindow):
         self.build_options()
         for name, handler, parameter in (
             ("login", self.on_login_action, "s"),
+            ("add-forge", lambda _action, parameter: self.ask_host(forge_host=parameter.unpack()), "s"),
             ("logout", self.on_logout_action, "(ss)"),
             ("profile", self.on_profile_action, "(ss)"),
             ("copy-token", self.on_copy_token_action, "(ss)"),
@@ -85,6 +86,10 @@ class Window(Adw.ApplicationWindow):
             Gio.FileMonitorFlags.WATCH_MOVES, None
         )
         self.monitor.connect("changed", self.on_hosts_changed)
+        self.forge_monitor = Gio.File.new_for_path(str(forge.accounts_file())).monitor_file(
+            Gio.FileMonitorFlags.WATCH_MOVES, None
+        )
+        self.forge_monitor.connect("changed", self.on_hosts_changed)
         self.reload()
 
     # --- helpers -----------------------------------------------------------
@@ -160,20 +165,46 @@ class Window(Adw.ApplicationWindow):
             return
         self.stack.set_visible_child_name("accounts")
 
-        groups: dict[str, Adw.PreferencesGroup] = {}
+        groups: dict[tuple[str, str], Adw.PreferencesGroup] = {}
         for account in accounts:
-            if account.host not in groups:
-                group = groups[account.host] = self.build_host_group(account.host)
+            key = (account.kind, account.host)
+            if key not in groups:
+                group = groups[key] = self.build_host_group(account.host, account.kind)
                 self.host_groups.append(group)
-            groups[account.host].add(self.build_row(account))
+            groups[key].add(self.build_row(account))
         # Keep the options group below the accounts.
         self.page.remove(self.options)
         for group in self.host_groups:
             self.page.add(group)
         self.page.add(self.options)
 
-    def build_host_group(self, host: str) -> Adw.PreferencesGroup:
+    def build_forge_group(self, host: str) -> Adw.PreferencesGroup:
+        group = Adw.PreferencesGroup(title=host, description=_("Forgejo or Gitea"))
+
+        def done(_result, error):
+            if error:
+                self.fail(error)
+            else:
+                self.toast(_("Git now uses Git-Switch to authenticate with {host}").format(host=host))
+
+        actions = Gio.SimpleActionGroup()
+        setup = Gio.SimpleAction.new("setup-git", None)
+        setup.connect("activate", lambda *_args: run_async(lambda: forge.setup_git(host), done))
+        actions.add_action(setup)
+        group.insert_action_group("host", actions)
+        menu = Gio.Menu()
+        menu.append(_("Use Git-Switch as Git credential helper"), "host.setup-git")
+        button = Gtk.MenuButton(
+            icon_name="emblem-system-symbolic", menu_model=menu, valign=Gtk.Align.CENTER, tooltip_text=_("Git settings")
+        )
+        button.add_css_class("flat")
+        group.set_header_suffix(button)
+        return group
+
+    def build_host_group(self, host: str, kind: str = "github") -> Adw.PreferencesGroup:
         """Group for one host; its menu holds the per-host git settings of gh."""
+        if kind != "github":
+            return self.build_forge_group(host)
         group = Adw.PreferencesGroup(title=host)
         actions = Gio.SimpleActionGroup()
         protocol = Gio.SimpleAction.new_stateful(
@@ -243,7 +274,14 @@ class Window(Adw.ApplicationWindow):
             (_("Sign in again"), "win.login", GLib.Variant("s", account.host)),
             (_("Sign out"), "win.logout", target),
         ]
-        if account.active:
+        if account.kind != "github":
+            # Tokens of these accounts never leave the keyring, and their scopes are fixed when created.
+            items = [
+                (_("Open profile"), "win.profile", target),
+                (_("Sign in again"), "win.add-forge", GLib.Variant("s", account.host)),
+                (_("Sign out"), "win.logout", target),
+            ]
+        elif account.active:
             # gh can only refresh the token of the active account.
             items.insert(2, (_("Change permissions…"), "win.scopes", GLib.Variant("s", account.host)))
         for label, action, value in items:
@@ -311,7 +349,10 @@ class Window(Adw.ApplicationWindow):
     def on_row_button(self, account: core.Account) -> None:
         profile = self.profiles.get(account)
         if profile is not None and profile.valid is False:
-            self.login(account.host)
+            if account.kind == "github":
+                self.login(account.host)
+            else:
+                self.ask_host(forge_host=account.host)
         else:
             self.switch(account)
 
@@ -427,20 +468,20 @@ class Window(Adw.ApplicationWindow):
 
     # --- sign-in -----------------------------------------------------------
 
-    def ask_host(self) -> None:
+    def ask_host(self, forge_host: str = "") -> None:
         """Dialog for adding an account: where it lives and how to sign in."""
         places = Adw.ComboRow(
             title=_("Account on"),
-            model=Gtk.StringList.new([_("GitHub.com"), _("GitHub Enterprise")]),
+            model=Gtk.StringList.new([_("GitHub.com"), _("GitHub Enterprise"), _("Forgejo or Gitea")]),
         )
-        server = Adw.EntryRow(title=_("Server address, e.g. github.example.com"), visible=False)
+        server = Adw.EntryRow(title=_("Server address, e.g. git.example.com"), text=forge_host, visible=False)
         methods = Adw.ComboRow(
             title=_("Sign-in"),
             model=Gtk.StringList.new([_("In the browser (recommended)"), _("With an access token")]),
         )
         token = Adw.PasswordEntryRow(title=_("Access token"), visible=False)
         create = Gtk.Button(
-            icon_name="web-browser-symbolic", valign=Gtk.Align.CENTER, tooltip_text=_("Create a token on GitHub")
+            icon_name="web-browser-symbolic", valign=Gtk.Align.CENTER, tooltip_text=_("Create a token on the server")
         )
         create.add_css_class("flat")
         token.add_suffix(create)
@@ -456,27 +497,37 @@ class Window(Adw.ApplicationWindow):
         dialog.set_response_appearance("login", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_default_response("login")
 
+        def is_forge() -> bool:
+            return places.get_selected() == 2
+
         def host() -> str:
             return core.normalize_host(server.get_text()) if places.get_selected() else core.DEFAULT_HOST
 
         def update(*_args):
-            with_token = methods.get_selected() == 1
-            own_server = places.get_selected() == 1
-            server.set_visible(own_server)
+            # Forgejo and Gitea have no browser sign-in for third-party apps, only tokens.
+            with_token = is_forge() or methods.get_selected() == 1
+            server.set_visible(places.get_selected() != 0)
+            methods.set_visible(not is_forge())
             token.set_visible(with_token)
-            if with_token:
+            if is_forge():
+                body = _(
+                    "Paste an access token of your server; the button next to the field opens the page to create "
+                    "one. It needs the permissions read:user and write:repository. The token is kept in the "
+                    "system keyring only."
+                )
+            elif with_token:
                 body = _("Paste a personal access token. The button next to the field opens the page to create one.")
             else:
                 body = _("Your browser opens GitHub, where you confirm a one-time code. No password is entered here.")
-            if own_server:
-                note = _("Only GitHub servers work here. Forgejo, Gitea and GitLab are not supported by the GitHub CLI.")
+            if places.get_selected() == 1:
+                note = _("Only GitHub servers work here. For Forgejo or Gitea choose that entry above.")
                 body = f"{body}\n\n{note}"
             dialog.set_body(body)
             dialog.set_response_enabled("login", bool(host()) and (not with_token or bool(token.get_text().strip())))
 
         def on_token_done(_result, error):
             if error:
-                self.fail(error)
+                self.explain(_("Sign-in not possible"), str(error))
             else:
                 self.toast(_("Signed in to {host}").format(host=host()), "success")
             self.reload(recheck=True)
@@ -485,6 +536,9 @@ class Window(Adw.ApplicationWindow):
             if response != "login":
                 return
             target, secret, with_token = host(), token.get_text(), methods.get_selected() == 1
+            if is_forge():
+                run_async(lambda: forge.add_account(target, secret), on_token_done)
+                return
 
             def checked(_result, error):
                 if error:
@@ -496,9 +550,15 @@ class Window(Adw.ApplicationWindow):
 
             run_async(lambda: core.check_github_server(target), checked)
 
-        create.connect("clicked", lambda *_args: Gio.AppInfo.launch_default_for_uri(core.token_page(host()), None))
+        def open_token_page(*_args):
+            page = forge.token_page(host()) if is_forge() else core.token_page(host())
+            Gio.AppInfo.launch_default_for_uri(page, None)
+
+        create.connect("clicked", open_token_page)
         for row, signal in ((places, "notify::selected"), (methods, "notify::selected"), (server, "changed"), (token, "changed")):
             row.connect(signal, update)
+        if forge_host:
+            places.set_selected(2)
         update()
         dialog.connect("response", on_response)
         dialog.present()

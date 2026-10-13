@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from gitswitch import core, mcp
+from gitswitch import core, forge, mcp
 
 HOSTS = """\
 github.com:
@@ -27,7 +27,7 @@ class HostsFileTest(unittest.TestCase):
         self.dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.dir.cleanup)
         Path(self.dir.name, "hosts.yml").write_text(HOSTS)
-        patcher = mock.patch.dict(os.environ, {"GH_CONFIG_DIR": self.dir.name})
+        patcher = mock.patch.dict(os.environ, {"GH_CONFIG_DIR": self.dir.name, "XDG_CONFIG_HOME": self.dir.name})
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -59,7 +59,7 @@ class HostsFileTest(unittest.TestCase):
         with mock.patch.object(core, "_run") as run:
             result = core.switch_account("bob", sync_identity=False)
         run.assert_called_once_with(["gh", "auth", "switch", "--hostname", "github.com", "--user", "Bob"])
-        self.assertEqual(result, {"host": "github.com", "user": "Bob", "git_identity": None})
+        self.assertEqual(result, {"host": "github.com", "user": "Bob", "kind": "github", "git_identity": None})
 
     def test_flow_commands(self):
         login = core.LoginFlow("github.com", None, None)
@@ -108,6 +108,92 @@ class HostsFileTest(unittest.TestCase):
     def test_noreply_email(self):
         profile = core.Profile(valid=True, login="alice", user_id=42)
         self.assertEqual(core.noreply_email("github.com", profile), "42+alice@users.noreply.github.com")
+
+
+class ForgeTest(unittest.TestCase):
+    """Forgejo accounts with the keyring and the server replaced by fakes."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.keyring = {}
+        profile = core.Profile(valid=True, login="dana", name="Dana", user_id=7)
+        patches = [
+            mock.patch.dict(os.environ, {"GH_CONFIG_DIR": self.dir.name, "XDG_CONFIG_HOME": self.dir.name}),
+            mock.patch.object(forge, "store_token", lambda host, user, token: self.keyring.__setitem__((host, user), token)),
+            mock.patch.object(forge, "lookup_token", lambda host, user: self.keyring.get((host, user), "")),
+            mock.patch.object(forge, "clear_token", lambda host, user: self.keyring.pop((host, user), None)),
+            mock.patch.object(forge, "_profile", return_value=profile),
+            mock.patch.object(core, "_run"),
+        ]
+        for patcher in patches:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.account = forge.add_account("https://Git.Example.com/", " s3cret ")
+
+    def request(self, **fields):
+        return "".join(f"{key}={value}\n" for key, value in fields.items())
+
+    def test_add_account(self):
+        self.assertEqual(self.account, core.Account("git.example.com", "dana", True, forge.KIND))
+        self.assertEqual(core.list_accounts(), [self.account])
+        self.assertEqual(self.keyring, {("git.example.com", "dana"): "s3cret"})
+        git_calls = [call.args[0] for call in core._run.call_args_list]
+        self.assertEqual(git_calls[0][-2:], ["credential.https://git.example.com.helper", ""])
+        self.assertTrue(git_calls[1][-1].endswith(" git-credential"))
+
+    def test_token_is_not_written_to_disk(self):
+        for path in Path(self.dir.name).rglob("*"):
+            if path.is_file():
+                self.assertNotIn("s3cret", path.read_text())
+        self.assertEqual(forge.accounts_file().stat().st_mode & 0o777, 0o600)
+        self.assertNotIn("s3cret", json.dumps(core.describe_accounts(check_tokens=False)))
+
+    def test_credential_helper_answers_only_matching_https_requests(self):
+        answer = forge.credential_helper("get", self.request(protocol="https", host="git.example.com"))
+        self.assertEqual(answer, "username=dana\npassword=s3cret\n")
+        for operation, fields in (
+            ("get", {"protocol": "http", "host": "git.example.com"}),
+            ("get", {"protocol": "https", "host": "evil.example.com"}),
+            ("get", {"protocol": "https", "host": "git.example.com.evil.example"}),
+            ("get", {"protocol": "https", "host": "git.example.com", "username": "someone-else"}),
+            ("store", {"protocol": "https", "host": "git.example.com"}),
+            ("erase", {"protocol": "https", "host": "git.example.com"}),
+        ):
+            self.assertEqual(forge.credential_helper(operation, self.request(**fields)), "", fields)
+
+    def test_switch_and_logout(self):
+        with mock.patch.object(forge, "_profile", return_value=core.Profile(valid=True, login="erin", user_id=8)):
+            forge.add_account("git.example.com", "other")
+        self.assertEqual([a.user for a in core.list_accounts() if a.active], ["erin"])
+        result = core.switch_account("dana", sync_identity=False)
+        self.assertEqual(result["kind"], forge.KIND)
+        self.assertEqual([a.user for a in core.list_accounts() if a.active], ["dana"])
+        core.logout_account(core.find_account("dana"))
+        self.assertEqual([(a.user, a.active) for a in core.list_accounts()], [("erin", True)])
+        self.assertNotIn(("git.example.com", "dana"), self.keyring)
+        core.logout_account(core.find_account("erin"))
+        self.assertEqual(core.list_accounts(), [])
+        self.assertEqual(self.keyring, {})
+
+    def test_rejected_token_is_not_stored(self):
+        with mock.patch.object(forge, "_profile", return_value=core.Profile(valid=False)):
+            with self.assertRaises(core.GhError):
+                forge.add_account("git.example.com", "bad")
+        self.assertNotIn("bad", self.keyring.values())
+
+    def test_noreply_address(self):
+        profile = core.Profile(valid=True, login="dana", user_id=7)
+        self.assertEqual(core.noreply_email("git.example.com:3000", profile, forge.KIND), "dana@noreply.git.example.com")
+
+
+class ApiTest(unittest.TestCase):
+    def test_tokens_are_not_sent_over_plain_http(self):
+        with self.assertRaises(ValueError):
+            core.api_get("http://git.example.com/api/v1/user", "token x")
+
+    def test_redirects_are_not_followed(self):
+        self.assertIsNone(core._NoRedirect().redirect_request(None, None, 302, "Found", {}, "https://evil.example"))
 
 
 class CatalogTest(unittest.TestCase):

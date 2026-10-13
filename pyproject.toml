@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gitswitch"
-description = "GUI and MCP server for switching GitHub CLI accounts (gh auth switch)"
+description = "GUI and MCP server for switching GitHub CLI, Forgejo and Gitea accounts"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"

@@ -30,14 +30,15 @@ Version: $version
 Architecture: all
 Maintainer: gitswitch contributors
 Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1 (>= 1.4), gh, git
-Recommends: pipewire-bin | pulseaudio-utils | alsa-utils
+Recommends: gir1.2-secret-1, pipewire-bin | pulseaudio-utils | alsa-utils
 Section: devel
 Priority: optional
 Description: GUI and MCP server for switching GitHub CLI accounts
  A small GTK window around "gh auth switch" that lists the accounts gh is
  logged in to, shows whether their tokens are still valid and switches
- between them, optionally keeping the global git identity in sync. Ships an
- MCP server so coding agents can switch accounts as well.
+ between them, optionally keeping the global git identity in sync. Also
+ manages Forgejo and Gitea accounts with tokens kept in the system keyring.
+ Ships an MCP server so coding agents can switch accounts as well.
 CONTROL
 
 mkdir -p dist

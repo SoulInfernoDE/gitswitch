@@ -33,6 +33,7 @@ class Account:
     host: str
     user: str
     active: bool
+    kind: str = "github"
 
 
 @dataclass
@@ -127,10 +128,14 @@ def parse_hosts(text: str) -> list[Account]:
 
 
 def list_accounts() -> list[Account]:
+    """All accounts: those of gh plus the Forgejo/Gitea ones Git-Switch keeps itself."""
+    from . import forge
+
     try:
-        return parse_hosts(hosts_file().read_text(encoding="utf-8"))
+        accounts = parse_hosts(hosts_file().read_text(encoding="utf-8"))
     except OSError:
-        return []
+        accounts = []
+    return accounts + forge.list_accounts()
 
 
 def git_protocol(host: str) -> str:
@@ -149,24 +154,45 @@ def _api_url(host: str) -> str:
     return "https://api.github.com/user" if host == DEFAULT_HOST else f"https://{host}/api/v3/user"
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never follow redirects, so a token is only ever sent to the host it belongs to."""
+
+    def redirect_request(self, *_args, **_kwargs):
+        return None
+
+
+_api_opener = urllib.request.build_opener(_NoRedirect)
+
+
+def api_get(url: str, authorization: str) -> tuple[object, object]:
+    """Authenticated GET over HTTPS; returns the decoded JSON body and the response headers."""
+    if not url.startswith("https://"):
+        raise ValueError("refusing to send a token over an unencrypted connection")
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": authorization,
+            "Accept": "application/json",
+            "User-Agent": f"gitswitch/{__version__}",
+        },
+    )
+    with _api_opener.open(request, timeout=10) as response:
+        return json.load(response), response.headers
+
+
 def fetch_profile(account: Account) -> Profile:
     """Check the stored token of ``account`` and fetch its public profile."""
+    if account.kind != "github":
+        from . import forge
+
+        return forge.fetch_profile(account)
     proc = _run(["gh", "auth", "token", "--hostname", account.host, "--user", account.user], check=False)
     token = proc.stdout.strip()
     if proc.returncode != 0 or not token:
         return Profile(valid=False, login=account.user)
-    request = urllib.request.Request(
-        _api_url(account.host),
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json",
-            "User-Agent": f"gitswitch/{__version__}",
-        },
-    )
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            data = json.load(response)
-            scopes = response.headers.get("X-OAuth-Scopes", "")
+        data, headers = api_get(_api_url(account.host), f"Bearer {token}")
+        scopes = headers.get("X-OAuth-Scopes", "")
     except urllib.error.HTTPError as error:
         return Profile(valid=False if error.code == 401 else None, login=account.user)
     except (OSError, ValueError):
@@ -190,7 +216,10 @@ def fetch_avatar(url: str, size: int = 96) -> bytes:
 # --- git identity -----------------------------------------------------------
 
 
-def noreply_email(host: str, profile: Profile) -> str:
+def noreply_email(host: str, profile: Profile, kind: str = "github") -> str:
+    """Address that hides the real one; Forgejo and Gitea use ``login@noreply.<host>`` by default."""
+    if kind != "github":
+        return f"{profile.login}@noreply.{host.split(':')[0]}"
     return f"{profile.user_id}+{profile.login}@users.noreply.{host}"
 
 
@@ -209,7 +238,7 @@ def sync_git_identity(account: Account, profile: Profile | None = None) -> dict:
     profile = profile or fetch_profile(account)
     if not profile.valid or not profile.user_id:
         raise GhError(_("Cannot read the profile of {user}; git identity left unchanged").format(user=account.user))
-    name, email = profile.name or profile.login, noreply_email(account.host, profile)
+    name, email = profile.name or profile.login, noreply_email(account.host, profile, account.kind)
     _run(["git", "config", "--global", "user.name", name])
     _run(["git", "config", "--global", "user.email", email])
     return {"name": name, "email": email}
@@ -259,10 +288,15 @@ def find_account(user: str, host: str | None = None) -> Account:
 
 
 def switch_account(user: str, host: str | None = None, sync_identity: bool | None = None) -> dict:
-    """Run ``gh auth switch`` and, if enabled, update the global git identity."""
+    """Activate an account (``gh auth switch`` for GitHub) and, if enabled, update the global git identity."""
     account = find_account(user, host)
-    _run(["gh", "auth", "switch", "--hostname", account.host, "--user", account.user])
-    result: dict = {"host": account.host, "user": account.user, "git_identity": None}
+    if account.kind == "github":
+        _run(["gh", "auth", "switch", "--hostname", account.host, "--user", account.user])
+    else:
+        from . import forge
+
+        forge.switch(account)
+    result: dict = {"host": account.host, "user": account.user, "kind": account.kind, "git_identity": None}
     if sync_identity is None:
         sync_identity = bool(load_settings().get("sync_git_identity"))
     if sync_identity:
@@ -300,8 +334,8 @@ def check_github_server(host: str) -> None:
     if _reachable(f"https://{host}/api/v1/version"):
         raise GhError(
             _(
-                "{host} is a Forgejo or Gitea server. The GitHub CLI (gh) only works with GitHub.com and "
-                "GitHub Enterprise Server, so this account cannot be added."
+                "{host} is a Forgejo or Gitea server, not GitHub Enterprise. "
+                "Choose \"Forgejo or Gitea\" under \"Account on\" to add it."
             ).format(host=host)
         )
 
@@ -321,6 +355,10 @@ def login_with_token(host: str, token: str) -> None:
 
 
 def logout_account(account: Account) -> None:
+    if account.kind != "github":
+        from . import forge
+
+        return forge.logout(account)
     _run(["gh", "auth", "logout", "--hostname", account.host, "--user", account.user])
 
 
