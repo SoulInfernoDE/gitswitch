@@ -12,5 +12,6 @@ sed -i '/^"POT-Creation-Date:/d' "$pot"
 
 for po in gitswitch/locale/*/LC_MESSAGES/gitswitch.po; do
     msgmerge --quiet --update --backup=none --no-fuzzy-matching "$po" "$pot"
+    msgattrib --no-obsolete --output-file="$po" "$po"
     msgfmt --check --statistics --output-file="${po%.po}.mo" "$po"
 done

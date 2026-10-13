@@ -61,6 +61,22 @@ class HostsFileTest(unittest.TestCase):
         run.assert_called_once_with(["gh", "auth", "switch", "--hostname", "github.com", "--user", "Bob"])
         self.assertEqual(result, {"host": "github.com", "user": "Bob", "git_identity": None})
 
+    def test_flow_commands(self):
+        login = core.LoginFlow("github.com", None, None)
+        self.assertEqual(
+            login.command(), ["gh", "auth", "login", "--hostname", "github.com", "--web", "--git-protocol", "https"]
+        )
+        refresh = core.LoginFlow("github.com", None, None, refresh=True, scopes="workflow", remove_scopes="delete_repo")
+        self.assertEqual(
+            refresh.command(),
+            ["gh", "auth", "refresh", "--hostname", "github.com", "--remove-scopes", "delete_repo", "--scopes", "workflow"],
+        )
+
+    def test_scope_catalog_covers_required_scopes(self):
+        names = [name for name, _description in core.scope_catalog()]
+        self.assertEqual(len(names), len(set(names)))
+        self.assertTrue(set(core.REQUIRED_SCOPES) <= set(names))
+
     def test_noreply_email(self):
         profile = core.Profile(valid=True, login="alice", user_id=42)
         self.assertEqual(core.noreply_email("github.com", profile), "42+alice@users.noreply.github.com")

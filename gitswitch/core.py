@@ -300,28 +300,64 @@ def describe_accounts(check_tokens: bool = True) -> list[dict]:
     return described
 
 
+# Scopes gh always needs; ``gh auth refresh`` refuses to remove them.
+REQUIRED_SCOPES = ("repo", "read:org", "gist")
+
+
+def scope_catalog() -> list[tuple[str, str]]:
+    """The OAuth scopes offered in the permissions dialog, with a short description."""
+    return [
+        ("repo", _("Full access to repositories")),
+        ("read:org", _("Read organization and team membership")),
+        ("gist", _("Create and edit gists")),
+        ("workflow", _("Update GitHub Actions workflow files")),
+        ("delete_repo", _("Delete repositories")),
+        ("read:packages", _("Download packages")),
+        ("write:packages", _("Upload packages")),
+        ("delete:packages", _("Delete packages")),
+        ("admin:public_key", _("Manage SSH keys")),
+        ("admin:ssh_signing_key", _("Manage SSH signing keys")),
+        ("admin:gpg_key", _("Manage GPG keys")),
+        ("user", _("Read and edit profile data")),
+        ("notifications", _("Read notifications")),
+        ("project", _("Manage projects")),
+        ("read:project", _("Read projects")),
+        ("codespace", _("Create and manage codespaces")),
+        ("admin:org", _("Manage organizations and teams")),
+        ("admin:repo_hook", _("Manage repository webhooks")),
+        ("security_events", _("Read and write security events")),
+        ("write:discussion", _("Read and write team discussions")),
+    ]
+
+
 class LoginFlow:
     """Drive ``gh auth login --web`` or ``gh auth refresh`` without a terminal.
 
     With ``refresh`` the token of the active account is renewed, adding the
-    comma separated ``scopes`` if given. ``on_code`` receives the one-time device code, ``on_done`` the exit status
+    comma separated ``scopes`` and dropping ``remove_scopes``. ``on_code`` receives the one-time device code, ``on_done`` the exit status
     and collected output. Both are called from a worker thread.
     """
 
-    def __init__(self, host: str, on_code, on_done, refresh: bool = False, scopes: str = ""):
+    def __init__(self, host, on_code, on_done, refresh: bool = False, scopes: str = "", remove_scopes: str = ""):
         self.host, self._on_code, self._on_done = host, on_code, on_done
-        self.refresh, self.scopes = refresh, scopes
+        self.refresh, self.scopes, self.remove_scopes = refresh, scopes, remove_scopes
         self._proc: subprocess.Popen | None = None
 
-    def start(self) -> None:
+    def command(self) -> list[str]:
         if self.refresh:
             args = ["gh", "auth", "refresh", "--hostname", self.host]
+            if self.remove_scopes:
+                args += ["--remove-scopes", self.remove_scopes]
         else:
             args = ["gh", "auth", "login", "--hostname", self.host, "--web"]
             if git_protocol(self.host):
                 args += ["--git-protocol", git_protocol(self.host)]
         if self.scopes:
             args += ["--scopes", self.scopes]
+        return args
+
+    def start(self) -> None:
+        args = self.command()
         try:
             self._proc = subprocess.Popen(
                 args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True

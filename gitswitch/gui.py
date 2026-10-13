@@ -335,15 +335,36 @@ class Window(Adw.ApplicationWindow):
 
     def on_scopes_action(self, _action, parameter) -> None:
         host = parameter.unpack()
-        entry = Adw.EntryRow(title=_("Additional permissions, e.g. workflow, delete_repo"), activates_default=True)
-        box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
-        box.add_css_class("boxed-list")
-        box.append(entry)
+        account = next((a for a in core.list_accounts() if a.host == host and a.active), None)
+        profile = self.profiles.get(account)
+        current = set(profile.scopes) if profile else set()
+        catalog = core.scope_catalog()
+        # Scopes the token has but the catalog does not know stay visible, so they are not dropped silently.
+        catalog += [(scope, "") for scope in sorted(current - {name for name, _description in catalog})]
+
+        rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, margin_start=2, margin_end=2, margin_bottom=2)
+        rows.add_css_class("boxed-list")
+        checks: dict[str, Gtk.CheckButton] = {}
+        for scope, description in catalog:
+            required = scope in core.REQUIRED_SCOPES
+            check = Gtk.CheckButton(active=required or scope in current, sensitive=not required, valign=Gtk.Align.CENTER)
+            row = Adw.ActionRow(title=scope, subtitle=description, use_markup=False, activatable_widget=check)
+            if required:
+                row.add_suffix(Gtk.Image(icon_name="changes-prevent-symbolic", tooltip_text=_("Always required by gh")))
+            row.add_prefix(check)
+            rows.append(row)
+            checks[scope] = check
+        entry = Adw.EntryRow(title=_("Other permissions, comma separated"))
+        rows.append(entry)
+        scrolled = Gtk.ScrolledWindow(
+            child=rows, min_content_height=380, min_content_width=360, hscrollbar_policy=Gtk.PolicyType.NEVER
+        )
+
         dialog = Adw.MessageDialog(
             transient_for=self,
             heading=_("Change permissions"),
-            body=_("Renews the token in the browser. Leave the field empty to keep the current permissions."),
-            extra_child=box,
+            body=_("Choose what this token may do. You confirm the change in the browser."),
+            extra_child=scrolled,
         )
         dialog.add_response("cancel", _("Cancel"))
         dialog.add_response("refresh", _("Continue"))
@@ -351,9 +372,16 @@ class Window(Adw.ApplicationWindow):
         dialog.set_default_response("refresh")
 
         def on_response(_dialog, response):
-            if response == "refresh":
-                scopes = ",".join(scope.strip() for scope in entry.get_text().split(",") if scope.strip())
-                self.login(host, refresh=True, scopes=scopes)
+            if response != "refresh":
+                return
+            selected = {scope for scope, check in checks.items() if check.get_active()}
+            selected |= {scope.strip() for scope in entry.get_text().split(",") if scope.strip()}
+            self.login(
+                host,
+                refresh=True,
+                scopes=",".join(sorted(selected - current)),
+                remove_scopes=",".join(sorted(current - selected)),
+            )
 
         dialog.connect("response", on_response)
         dialog.present()
@@ -410,7 +438,7 @@ class Window(Adw.ApplicationWindow):
         dialog.connect("response", on_response)
         dialog.present()
 
-    def login(self, host: str, refresh: bool = False, scopes: str = "") -> None:
+    def login(self, host: str, refresh: bool = False, scopes: str = "", remove_scopes: str = "") -> None:
         code_label = Gtk.Label(selectable=True)
         code_label.add_css_class("title-1")
         copy_button = Gtk.Button(label=_("Copy code"), halign=Gtk.Align.CENTER, sensitive=False)
@@ -453,6 +481,7 @@ class Window(Adw.ApplicationWindow):
             lambda status, output: GLib.idle_add(lambda: on_done(status, output) and False),
             refresh=refresh,
             scopes=scopes,
+            remove_scopes=remove_scopes,
         )
 
         def on_response(_dialog, _response):
