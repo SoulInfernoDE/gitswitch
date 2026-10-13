@@ -40,6 +40,8 @@ _DE = {
     "MCP server registered in Claude Code": "MCP-Server in Claude Code registriert",
     "MCP server removed from Claude Code": "MCP-Server aus Claude Code entfernt",
     "Sound effects": "Soundeffekte",
+    "About": "Info",
+    "Switch between GitHub CLI accounts": "Zwischen GitHub-CLI-Konten wechseln",
     "No accounts yet": "Noch keine Konten",
     "Sign in to GitHub to get started.": "Melde dich bei GitHub an, um loszulegen.",
     "GitHub CLI not found": "GitHub CLI nicht gefunden",

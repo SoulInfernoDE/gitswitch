@@ -21,11 +21,11 @@ gitswitch = "gitswitch.__main__:main"
 packages = ["gitswitch"]
 
 [tool.setuptools.package-data]
-gitswitch = ["sounds/*.wav"]
+gitswitch = ["sounds/*.wav", "icons/hicolor/scalable/apps/*.svg"]
 
 [tool.setuptools.dynamic]
 version = { attr = "gitswitch.__version__" }
 
 [tool.setuptools.data-files]
 "share/applications" = ["data/dev.gitswitch.GitSwitch.desktop"]
-"share/icons/hicolor/scalable/apps" = ["data/dev.gitswitch.GitSwitch.svg"]
+"share/icons/hicolor/scalable/apps" = ["gitswitch/icons/hicolor/scalable/apps/dev.gitswitch.GitSwitch.svg"]

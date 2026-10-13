@@ -13,10 +13,10 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import core, sound  # noqa: E402
+from . import __version__, core, sound  # noqa: E402
 from .i18n import _  # noqa: E402
 
-APP_ID = "dev.gitswitch.GitSwitch"
+APP_ID = ICON_NAME = "dev.gitswitch.GitSwitch"
 
 
 def run_async(func, callback) -> None:
@@ -34,7 +34,7 @@ def run_async(func, callback) -> None:
 
 class Window(Adw.ApplicationWindow):
     def __init__(self, app: Adw.Application):
-        super().__init__(application=app, title="Git-Switch", default_width=460, default_height=560)
+        super().__init__(application=app, title="Git-Switch", default_width=460, default_height=660)
         self.settings = core.load_settings()
         self.profiles: dict[core.Account, core.Profile] = {}
         self.avatars: dict[str, Gdk.Texture] = {}
@@ -43,16 +43,24 @@ class Window(Adw.ApplicationWindow):
         self.reload_source = 0
         self.busy_toggle = False
 
-        header = Adw.HeaderBar()
+        title = Gtk.Box(spacing=8)
+        title.append(Gtk.Image(icon_name=ICON_NAME, pixel_size=24))
+        title_label = Gtk.Label(label="Git-Switch")
+        title_label.add_css_class("title")
+        title.append(title_label)
+        header = Adw.HeaderBar(title_widget=title)
         add_button = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=_("Add account"))
         add_button.connect("clicked", lambda *_args: self.ask_host())
         header.pack_start(add_button)
         refresh_button = Gtk.Button(icon_name="view-refresh-symbolic", tooltip_text=_("Refresh"))
         refresh_button.connect("clicked", lambda *_args: self.reload(recheck=True))
+        about_button = Gtk.Button(icon_name="help-about-symbolic", tooltip_text=_("About"))
+        about_button.connect("clicked", lambda *_args: self.show_about())
+        header.pack_end(about_button)
         header.pack_end(refresh_button)
 
         self.page = Adw.PreferencesPage()
-        self.status = Adw.StatusPage(icon_name="system-users-symbolic")
+        self.status = Adw.StatusPage(icon_name=ICON_NAME)
         self.stack = Gtk.Stack()
         self.stack.add_named(self.page, "accounts")
         self.stack.add_named(self.status, "status")
@@ -92,6 +100,18 @@ class Window(Adw.ApplicationWindow):
     def copy(self, text: str) -> None:
         self.get_clipboard().set(text)
         self.toast(_("Copied to clipboard"))
+
+    def show_about(self) -> None:
+        Adw.AboutWindow(
+            transient_for=self,
+            application_name="Git-Switch",
+            application_icon=ICON_NAME,
+            version=__version__,
+            comments=_("Switch between GitHub CLI accounts"),
+            website="https://github.com/SoulInfernoDE/gitswitch",
+            issue_url="https://github.com/SoulInfernoDE/gitswitch/issues",
+            license_type=Gtk.License.MIT_X11,
+        ).present()
 
     def on_hosts_changed(self, *_args) -> None:
         if self.reload_source:
@@ -444,10 +464,10 @@ class Window(Adw.ApplicationWindow):
 
 
 def _on_startup(_app) -> None:
-    source_icons = Path(__file__).resolve().parent.parent / "data"
-    if source_icons.is_dir():
-        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(str(source_icons))
-    Gtk.Window.set_default_icon_name(APP_ID)
+    # The bundled copy makes the logo available even if no icon theme has it.
+    icons = Path(__file__).resolve().parent / "icons"
+    Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(str(icons))
+    Gtk.Window.set_default_icon_name(ICON_NAME)
 
 
 def main() -> int:
