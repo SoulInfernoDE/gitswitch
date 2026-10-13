@@ -46,14 +46,14 @@ Requires `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 and libadwaita ≥ 1.4.
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.2.1_all.deb
+sudo apt install ./gitswitch_0.2.2_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.2.1-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.2.2-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.
