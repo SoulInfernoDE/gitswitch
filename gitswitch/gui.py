@@ -5,6 +5,7 @@ from __future__ import annotations
 import shlex
 import sys
 import threading
+from pathlib import Path
 
 import gi
 
@@ -12,7 +13,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import core  # noqa: E402
+from . import core, sound  # noqa: E402
 from .i18n import _  # noqa: E402
 
 APP_ID = "dev.gitswitch.GitSwitch"
@@ -80,8 +81,13 @@ class Window(Adw.ApplicationWindow):
 
     # --- helpers -----------------------------------------------------------
 
-    def toast(self, text: str) -> None:
+    def toast(self, text: str, sound_name: str | None = None) -> None:
         self.toasts.add_toast(Adw.Toast(title=text, use_markup=False))
+        if sound_name and self.settings["sounds"]:
+            sound.play(sound_name)
+
+    def fail(self, error) -> None:
+        self.toast(str(error), "error")
 
     def copy(self, text: str) -> None:
         self.get_clipboard().set(text)
@@ -229,9 +235,9 @@ class Window(Adw.ApplicationWindow):
     def switch(self, account: core.Account) -> None:
         def done(result, error):
             if error:
-                self.toast(str(error))
+                self.fail(error)
                 return
-            self.toast(result.get("warning") or _("Switched to {user}").format(user=account.user))
+            self.toast(result.get("warning") or _("Switched to {user}").format(user=account.user), "switch")
             self.reload()
             self.update_identity_row()
 
@@ -259,7 +265,10 @@ class Window(Adw.ApplicationWindow):
         dialog.set_response_appearance("logout", Adw.ResponseAppearance.DESTRUCTIVE)
 
         def done(_result, error):
-            self.toast(str(error) if error else _("Signed out {user}").format(user=user))
+            if error:
+                self.fail(error)
+            else:
+                self.toast(_("Signed out {user}").format(user=user), "signout")
             self.reload(recheck=True)
 
         def on_response(_dialog, response):
@@ -318,10 +327,10 @@ class Window(Adw.ApplicationWindow):
             state["open"] = False
             dialog.close()
             if status == 0:
-                self.toast(_("Signed in to {host}").format(host=host))
+                self.toast(_("Signed in to {host}").format(host=host), "success")
             else:
                 last_line = output.splitlines()[-1] if output else ""
-                self.toast(f"{_('Sign-in failed')}: {last_line}".rstrip(": "))
+                self.toast(f"{_('Sign-in failed')}: {last_line}".rstrip(": "), "error")
             self.reload(recheck=True)
 
         flow = core.LoginFlow(
@@ -339,7 +348,7 @@ class Window(Adw.ApplicationWindow):
         try:
             flow.start()
         except core.GhError as error:
-            self.toast(str(error))
+            self.fail(error)
             return
         dialog.present()
 
@@ -371,6 +380,10 @@ class Window(Adw.ApplicationWindow):
             button.connect("clicked", lambda *_args: self.copy(command))
             self.mcp_row.add_suffix(button)
         self.options.add(self.mcp_row)
+
+        sound_row = Adw.SwitchRow(title=_("Sound effects"), active=bool(self.settings["sounds"]))
+        sound_row.connect("notify::active", self.on_sounds_toggled)
+        self.options.add(sound_row)
         self.page.add(self.options)
 
     def update_identity_row(self) -> None:
@@ -393,12 +406,18 @@ class Window(Adw.ApplicationWindow):
 
         def done(identity, error):
             if error:
-                self.toast(str(error))
+                self.fail(error)
                 return
             self.toast(_("Git identity set to {identity}").format(identity=f"{identity['name']} <{identity['email']}>"))
             self.update_identity_row()
 
         run_async(lambda: core.sync_git_identity(accounts[0], self.profiles.get(accounts[0])), done)
+
+    def on_sounds_toggled(self, row, _pspec) -> None:
+        self.settings["sounds"] = row.get_active()
+        core.save_settings(self.settings)
+        if row.get_active():
+            sound.play("switch")
 
     def set_mcp_switch(self, active: bool) -> None:
         self.busy_toggle = True
@@ -415,7 +434,7 @@ class Window(Adw.ApplicationWindow):
             row.set_sensitive(True)
             if error:
                 self.set_mcp_switch(not register)
-                self.toast(str(error))
+                self.fail(error)
             elif register:
                 self.toast(_("MCP server registered in Claude Code"))
             else:
@@ -424,7 +443,15 @@ class Window(Adw.ApplicationWindow):
         run_async(core.mcp_register if register else core.mcp_unregister, done)
 
 
+def _on_startup(_app) -> None:
+    source_icons = Path(__file__).resolve().parent.parent / "data"
+    if source_icons.is_dir():
+        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(str(source_icons))
+    Gtk.Window.set_default_icon_name(APP_ID)
+
+
 def main() -> int:
     app = Adw.Application(application_id=APP_ID, flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+    app.connect("startup", _on_startup)
     app.connect("activate", lambda app: (app.get_active_window() or Window(app)).present())
     return app.run(sys.argv[:1])

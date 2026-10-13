@@ -1,3 +1,5 @@
+<img src="data/dev.gitswitch.GitSwitch.svg" width="96" align="right" alt="gitswitch logo">
+
 # gitswitch
 
 A small GTK app around `gh auth switch`: see every account the
@@ -19,6 +21,7 @@ through the bundled MCP server.
   active account (uses the account's GitHub noreply address)
 - Follows changes made elsewhere (the `gh` CLI, the MCP server) immediately
 - MCP server so Claude Code can list and switch accounts
+- Soft sound effects for switching, sign-in and errors (can be turned off)
 - English and German interface
 
 ## Install
@@ -73,6 +76,7 @@ server never returns tokens.
 
 ```bash
 python3 -m unittest discover -s tests
+packaging/make-sounds.py   # regenerate the sound effects
 packaging/build-deb.sh
 ```
 

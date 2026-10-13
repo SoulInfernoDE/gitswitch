@@ -7,8 +7,9 @@ version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' gitswitch/__init__.py)
 root=$(mktemp -d)
 trap 'rm -rf "$root"' EXIT
 
-install -d "$root/DEBIAN" "$root/usr/bin" "$root/usr/lib/python3/dist-packages/gitswitch"
+install -d "$root/DEBIAN" "$root/usr/bin" "$root/usr/lib/python3/dist-packages/gitswitch/sounds"
 install -m 644 gitswitch/*.py "$root/usr/lib/python3/dist-packages/gitswitch/"
+install -m 644 gitswitch/sounds/*.wav "$root/usr/lib/python3/dist-packages/gitswitch/sounds/"
 install -Dm 644 data/dev.gitswitch.GitSwitch.desktop "$root/usr/share/applications/dev.gitswitch.GitSwitch.desktop"
 install -Dm 644 data/dev.gitswitch.GitSwitch.svg "$root/usr/share/icons/hicolor/scalable/apps/dev.gitswitch.GitSwitch.svg"
 install -Dm 644 LICENSE "$root/usr/share/doc/gitswitch/copyright"
@@ -24,6 +25,7 @@ Version: $version
 Architecture: all
 Maintainer: gitswitch contributors
 Depends: python3 (>= 3.10), python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1 (>= 1.4), gh, git
+Recommends: pipewire-bin | pulseaudio-utils | alsa-utils
 Section: devel
 Priority: optional
 Description: GUI and MCP server for switching GitHub CLI accounts

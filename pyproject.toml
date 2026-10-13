@@ -20,6 +20,9 @@ gitswitch = "gitswitch.__main__:main"
 [tool.setuptools]
 packages = ["gitswitch"]
 
+[tool.setuptools.package-data]
+gitswitch = ["sounds/*.wav"]
+
 [tool.setuptools.dynamic]
 version = { attr = "gitswitch.__version__" }
 
