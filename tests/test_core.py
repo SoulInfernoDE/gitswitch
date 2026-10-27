@@ -284,6 +284,40 @@ class LeakTest(unittest.TestCase):
             found = leaks.report(leaks.scan_repository(directory, self.context))["findings"]
         self.assertEqual({f["kind"] for f in found}, {"private-server", "own-email"})
 
+    def restrict(self, repository="git.example.com/dana/notes"):
+        rules = {"terms": ["Acme", "Wile E."], "files": ["ACME.md", ".acme"], "repository": repository}
+        leaks._restricted_settings(self.context, {"restricted": rules})
+
+    def test_restricted_terms_only_in_the_set_aside_repository(self):
+        self.assertEqual(self.kinds("Acme built this"), [])
+        self.restrict("git@git.example.com:dana/notes.git")
+        self.assertEqual(self.context.restricted_repository, "git.example.com/dana/notes")
+        self.assertEqual(self.kinds("Co-Authored-By: Acme Bot <bot@acme.invalid>"), ["restricted-attribution"])
+        self.assertEqual(self.kinds("Generated with [Acme Tools](https://acme.invalid)"), ["restricted-attribution"])
+        self.assertEqual(self.kinds("asked acme about it, and Wile E. too"), ["restricted-term"])
+        self.assertEqual(self.kinds("an acmeish word"), [])
+        self.assertTrue(leaks.restricted_allowed("git.example.com", "Dana/Notes", self.context))
+        self.assertFalse(leaks.restricted_allowed("git.example.com", "dana/other", self.context))
+        self.assertEqual(leaks.repository_id("https://Git.Example.com/dana/notes.git/"), "git.example.com/dana/notes")
+
+    def test_repository_scan_honours_the_set_aside_repository(self):
+        self.restrict()
+        with tempfile.TemporaryDirectory() as directory:
+            env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull}
+
+            def git(*args):
+                core.subprocess.run(["git", "-C", directory, *args], check=True, capture_output=True, env=env)
+
+            git("init", "-q")
+            Path(directory, "ACME.md").write_text("Notes for Acme\n")
+            git("add", "-A")
+            git("-c", "user.name=D", "-c", "user.email=d@users.noreply.github.com", "commit", "-q", "-m", "notes")
+            git("remote", "add", "origin", "https://github.com/dana/public.git")
+            kinds = {f["kind"] for f in leaks.report(leaks.scan_repository(directory, self.context))["findings"]}
+            self.assertEqual(kinds, {"restricted-file", "restricted-term"})
+            git("remote", "set-url", "origin", "https://git.example.com/dana/notes.git")
+            self.assertEqual(leaks.report(leaks.scan_repository(directory, self.context))["findings"], [])
+
     def test_mcp_write_refuses_secrets(self):
         with mock.patch.object(leaks, "gather", return_value=self.context), mock.patch.object(forge, "api") as api:
             call = {

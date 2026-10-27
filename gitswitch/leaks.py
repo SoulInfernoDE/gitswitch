@@ -11,7 +11,7 @@ import ipaddress
 import re
 import socket
 import subprocess
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 from . import core
@@ -25,6 +25,7 @@ _PRIVATE_KEY = re.compile(r"-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----")
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _IPV4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 _INTERNAL_HOST = re.compile(r"\b[\w-]+(?:\.[\w-]+)*\.(?:local|lan|internal|intranet|home\.arpa)\b", re.IGNORECASE)
+_ATTRIBUTION = re.compile(r"^\W*(?:co-authored-by|generated (?:with|by)|signed-off-by)\b", re.IGNORECASE)
 _PLACEHOLDER_MAIL = re.compile(r"noreply|@(?:[\w-]+\.)*example\.(?:com|org|net)$|\.(?:invalid|test|example)$", re.IGNORECASE)
 
 
@@ -47,13 +48,53 @@ class Context:
     home: str = ""
     machine: str = ""
     allow: list[str] = field(default_factory=list)
+    # Terms and file names the user keeps out of published content, except in one repository ("host/owner/name").
+    restricted_terms: re.Pattern | None = None
+    restricted_files: set[str] = field(default_factory=set)
+    restricted_repository: str = ""
+    restricted_label: str = ""
+
+    @property
+    def restricting(self) -> bool:
+        return self.restricted_terms is not None or bool(self.restricted_files)
+
+
+def repository_id(location: str) -> str:
+    """``host/owner/name`` for a remote URL (HTTPS or SSH) or such a spec, in lower case."""
+    text = location.strip().lower()
+    text = text.split("://", 1)[-1]
+    text = text.split("@", 1)[-1] if "@" in text.split("/", 1)[0] else text
+    text = text.replace(":", "/", 1) if ":" in text.split("/", 1)[0] and not location.startswith(("http", "ssh")) else text
+    text = text.rstrip("/")
+    return text[:-4] if text.endswith(".git") else text
+
+
+def restricted_allowed(host: str, repository: str, context: "Context | None" = None) -> bool:
+    """Whether content for ``repository`` on ``host`` may contain the restricted terms."""
+    context = context or gather()
+    if not context.restricting:
+        return True
+    return bool(context.restricted_repository) and repository_id(f"{host}/{repository}") == context.restricted_repository
+
+
+def _restricted_settings(context: "Context", settings: dict) -> None:
+    rules = settings.get("restricted") if isinstance(settings.get("restricted"), dict) else {}
+    terms = [str(term) for term in rules.get("terms") or [] if str(term).strip()]
+    if terms:
+        context.restricted_terms = re.compile(r"\b(?:" + "|".join(map(re.escape, terms)) + r")\b", re.IGNORECASE)
+    context.restricted_files = {str(name) for name in rules.get("files") or [] if str(name).strip()}
+    if rules.get("repository"):
+        context.restricted_repository = repository_id(str(rules["repository"]))
+        context.restricted_label = str(rules["repository"])
 
 
 def gather() -> Context:
     from . import forge
 
     context = Context(home=str(Path.home()), machine=socket.gethostname())
-    context.allow = [str(entry) for entry in core.load_settings().get("leak_allow") or []]
+    settings = core.load_settings()
+    context.allow = [str(entry) for entry in settings.get("leak_allow") or []]
+    _restricted_settings(context, settings)
     for account in core.list_accounts():
         label = f"{account.user}@{account.host}"
         try:
@@ -116,7 +157,28 @@ def scan_line(line: str, where: str, context: Context) -> list[Finding]:
             add("private-address", REVIEW, match.group(0), _("An address from a private network."))
     for match in _INTERNAL_HOST.finditer(line):
         add("internal-host", REVIEW, match.group(0), _("A host name from an internal network."))
+    if context.restricted_terms is not None:
+        term = context.restricted_terms.search(line)
+        if term and _ATTRIBUTION.search(line):
+            add("restricted-attribution", PRIVATE, term.group(0), _restricted_detail(context, _("An attribution line naming {term}."), term.group(0)))
+        elif term:
+            add("restricted-term", PRIVATE, term.group(0), _restricted_detail(context, _("A mention of {term}."), term.group(0)))
     return found
+
+
+def _restricted_detail(context: Context, what: str, term: str = "") -> str:
+    text = what.format(term=term)
+    if context.restricted_repository:
+        place = context.restricted_label or context.restricted_repository
+        return text + " " + _("This belongs only in {repository}.").format(repository=place)
+    return text + " " + _("This is not meant to be published.")
+
+
+def _restricted_file(path: str, context: Context) -> list[Finding]:
+    hits = context.restricted_files.intersection(Path(path).parts)
+    if not hits:
+        return []
+    return [Finding("restricted-file", PRIVATE, path, path, _restricted_detail(context, _("A file on your restricted list ({term})."), sorted(hits)[0]))]
 
 
 def scan_text(text: str, where: str = "text", context: Context | None = None) -> list[Finding]:
@@ -137,6 +199,7 @@ def scan_paths(paths: list[str], context: Context | None = None) -> list[Finding
             raise core.GhError(_("{path} does not exist.").format(path=root))
         files = [root] if root.is_file() else sorted(p for p in root.rglob("*") if p.is_file() and ".git" not in p.parts)
         for path in files:
+            found += _restricted_file(str(path), context)
             if path.stat().st_size > MAX_FILE_BYTES:
                 continue
             data = path.read_bytes()
@@ -155,6 +218,7 @@ def _scan_diff(diff: str, context: Context) -> list[Finding]:
     for line in diff.splitlines():
         if line.startswith("+++ "):
             path = line[6:] if line.startswith("+++ b/") else ""
+            found += _restricted_file(path, context) if path else []
         elif line.startswith("@@"):
             match = re.search(r"\+(\d+)", line)
             number = int(match.group(1)) if match else 0
@@ -164,6 +228,14 @@ def _scan_diff(diff: str, context: Context) -> list[Finding]:
     return found
 
 
+def _push_target(root: str) -> str:
+    """``host/owner/name`` the next push goes to."""
+    upstream = _git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+    remote = upstream.stdout.split("/", 1)[0] if upstream.returncode == 0 else "origin"
+    url = _git(root, "remote", "get-url", "--push", remote)
+    return repository_id(url.stdout) if url.returncode == 0 else ""
+
+
 def scan_repository(repository: str, context: Context | None = None) -> list[Finding]:
     """Scan what the next push would publish: staged changes and commits the upstream lacks."""
     context = context or gather()
@@ -171,6 +243,8 @@ def scan_repository(repository: str, context: Context | None = None) -> list[Fin
     if top.returncode != 0:
         raise core.GhError(_("{path} is not a git repository.").format(path=repository))
     root = top.stdout.strip()
+    if context.restricted_repository and _push_target(root) == context.restricted_repository:
+        context = replace(context, restricted_terms=None, restricted_files=set())
     found = _scan_diff(_git(root, "diff", "--cached", "-U0").stdout, context)
     if _git(root, "rev-parse", "--abbrev-ref", "@{upstream}").returncode == 0:
         commits = "@{upstream}..HEAD"

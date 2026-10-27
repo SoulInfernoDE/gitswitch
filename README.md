@@ -57,14 +57,14 @@ Forgejo/Gitea accounts additionally need libsecret and a running keyring
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.5.0_all.deb
+sudo apt install ./gitswitch_0.5.1_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.5.0-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.5.1-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.

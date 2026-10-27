@@ -7,6 +7,7 @@ server needs, so no third-party SDK is required.
 from __future__ import annotations
 
 import json
+import re
 import sys
 import threading
 
@@ -142,6 +143,15 @@ def instructions() -> str:
         "Before publishing anything on the user's behalf (commit, push, release, issue, pull request, README), "
         "run check_for_leaks on it and resolve the findings with the user."
     )
+    rules = core.load_settings().get("restricted")
+    terms = ", ".join(str(term) for term in (rules or {}).get("terms") or []) if isinstance(rules, dict) else ""
+    if terms:
+        text += "\n" + _(
+            "Do not mention {terms} in anything you publish, and add no Co-Authored-By or 'Generated with' lines "
+            "naming them."
+        ).format(terms=terms)
+        if rules.get("repository"):
+            text += " " + _("Such notes belong only in the repository {repository}.").format(repository=rules["repository"])
     return "\n".join([text, *notices()])
 
 
@@ -167,6 +177,16 @@ def _refuse_secrets(*values: object) -> None:
     secrets = [f for f in leaks.scan_text(text, "request") if f.severity == leaks.SECRET]
     if secrets:
         raise core.GhError(_("Not sent: the request contains a secret ({detail})").format(detail=secrets[0].detail))
+
+
+def _refuse_restricted(host: str | None, repository: str, findings: list) -> None:
+    """Keep the user's restricted terms out of every repository except the one set aside for them."""
+    restricted = [f for f in findings if f.kind.startswith("restricted-")]
+    if not restricted:
+        return
+    server = forge._api_account(host).host
+    if not repository or not leaks.restricted_allowed(server, repository):
+        raise core.GhError(_("Not sent: {detail}").format(detail=restricted[0].detail))
 
 
 def _call_tool(name: str, arguments: dict) -> object:
@@ -195,11 +215,16 @@ def _call_tool(name: str, arguments: dict) -> object:
         if name == "forgejo_upload_release_asset":
             if leaks.report(leaks.scan_paths([text.get("file", "")]))["counts"][leaks.SECRET]:
                 raise core.GhError(_("Not sent: the file contains a secret."))
+            _refuse_restricted(host, text.get("repository", ""), leaks.scan_paths([text.get("file", "")]))
             return forge.upload_release_asset(text.get("repository", ""), text.get("tag", ""), text.get("file", ""), host)
         method = "GET" if name == "forgejo_api_get" else text.get("method", "").upper()
         if name == "forgejo_api_write" and method not in ("POST", "PUT", "PATCH", "DELETE"):
             raise core.GhError(_("Unsupported method: {method}").format(method=method))
         _refuse_secrets(text.get("path"), arguments.get("body"))
+        if name == "forgejo_api_write":
+            target = re.match(r"/repos/([^/?]+/[^/?]+)", text.get("path", ""))
+            body = json.dumps(arguments.get("body"), ensure_ascii=False) if arguments.get("body") is not None else ""
+            _refuse_restricted(host, target.group(1) if target else "", leaks.scan_text(body, "request"))
         return forge.api(method, text.get("path", ""), arguments.get("body"), host)
     raise core.GhError(_("Unknown tool: {name}").format(name=name))
 

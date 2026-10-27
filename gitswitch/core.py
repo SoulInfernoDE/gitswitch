@@ -264,7 +264,7 @@ def _settings_file() -> Path:
 
 
 def load_settings() -> dict:
-    settings = {"sync_git_identity": False, "sounds": True, "check_updates": True, "leak_allow": []}
+    settings = {"sync_git_identity": False, "sounds": True, "check_updates": True, "leak_allow": [], "restricted": {}}
     try:
         stored = json.loads(_settings_file().read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -278,6 +278,8 @@ def save_settings(settings: dict) -> None:
     path = _settings_file()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    # The settings may name private servers.
+    path.chmod(0o600)
 
 
 # --- actions ----------------------------------------------------------------

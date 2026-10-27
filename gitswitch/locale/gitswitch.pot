@@ -62,7 +62,7 @@ msgstr ""
 msgid "{count} finding(s)."
 msgstr ""
 
-#: gitswitch/core.py:65 gitswitch/core.py:464
+#: gitswitch/core.py:65 gitswitch/core.py:466
 #, python-brace-format
 msgid "'{command}' was not found in PATH"
 msgstr ""
@@ -82,108 +82,108 @@ msgstr ""
 msgid "Cannot read the profile of {user}; git identity left unchanged"
 msgstr ""
 
-#: gitswitch/core.py:294
+#: gitswitch/core.py:296
 msgid "none"
-msgstr ""
-
-#: gitswitch/core.py:295
-#, python-brace-format
-msgid "No logged-in account '{user}'. Known accounts: {known}"
 msgstr ""
 
 #: gitswitch/core.py:297
 #, python-brace-format
+msgid "No logged-in account '{user}'. Known accounts: {known}"
+msgstr ""
+
+#: gitswitch/core.py:299
+#, python-brace-format
 msgid "'{user}' exists on several hosts; pass a hostname"
 msgstr ""
 
-#: gitswitch/core.py:348
+#: gitswitch/core.py:350
 #, python-brace-format
 msgid ""
 "{host} is a Forgejo or Gitea server, not GitHub Enterprise. Choose \"Forgejo "
 "or Gitea\" under \"Account on\" to add it."
 msgstr ""
 
-#: gitswitch/core.py:408
+#: gitswitch/core.py:410
 msgid "Full access to repositories"
 msgstr ""
 
-#: gitswitch/core.py:409
+#: gitswitch/core.py:411
 msgid "Read organization and team membership"
 msgstr ""
 
-#: gitswitch/core.py:410
+#: gitswitch/core.py:412
 msgid "Create and edit gists"
 msgstr ""
 
-#: gitswitch/core.py:411
+#: gitswitch/core.py:413
 msgid "Update GitHub Actions workflow files"
 msgstr ""
 
-#: gitswitch/core.py:412
+#: gitswitch/core.py:414
 msgid "Delete repositories"
 msgstr ""
 
-#: gitswitch/core.py:413
+#: gitswitch/core.py:415
 msgid "Download packages"
 msgstr ""
 
-#: gitswitch/core.py:414
+#: gitswitch/core.py:416
 msgid "Upload packages"
 msgstr ""
 
-#: gitswitch/core.py:415
+#: gitswitch/core.py:417
 msgid "Delete packages"
 msgstr ""
 
-#: gitswitch/core.py:416
+#: gitswitch/core.py:418
 msgid "Manage SSH keys"
 msgstr ""
 
-#: gitswitch/core.py:417
+#: gitswitch/core.py:419
 msgid "Manage SSH signing keys"
 msgstr ""
 
-#: gitswitch/core.py:418
+#: gitswitch/core.py:420
 msgid "Manage GPG keys"
 msgstr ""
 
-#: gitswitch/core.py:419
+#: gitswitch/core.py:421
 msgid "Read and edit profile data"
 msgstr ""
 
-#: gitswitch/core.py:420
+#: gitswitch/core.py:422
 msgid "Read notifications"
 msgstr ""
 
-#: gitswitch/core.py:421
+#: gitswitch/core.py:423
 msgid "Manage projects"
 msgstr ""
 
-#: gitswitch/core.py:422
+#: gitswitch/core.py:424
 msgid "Read projects"
 msgstr ""
 
-#: gitswitch/core.py:423
+#: gitswitch/core.py:425
 msgid "Create and manage codespaces"
 msgstr ""
 
-#: gitswitch/core.py:424
+#: gitswitch/core.py:426
 msgid "Manage organizations and teams"
 msgstr ""
 
-#: gitswitch/core.py:425
+#: gitswitch/core.py:427
 msgid "Manage repository webhooks"
 msgstr ""
 
-#: gitswitch/core.py:426
+#: gitswitch/core.py:428
 msgid "Read and write security events"
 msgstr ""
 
-#: gitswitch/core.py:427
+#: gitswitch/core.py:429
 msgid "Read and write team discussions"
 msgstr ""
 
-#: gitswitch/core.py:520
+#: gitswitch/core.py:522
 #, python-brace-format
 msgid "{path} does not exist; is Claude Code installed?"
 msgstr ""
@@ -221,7 +221,7 @@ msgstr ""
 msgid "Request to {host} failed: {detail}"
 msgstr ""
 
-#: gitswitch/forge.py:185 gitswitch/mcp.py:201
+#: gitswitch/forge.py:185 gitswitch/mcp.py:222
 #, python-brace-format
 msgid "Unsupported method: {method}"
 msgstr ""
@@ -595,59 +595,83 @@ msgstr ""
 msgid "MCP server removed from Claude Code"
 msgstr ""
 
-#: gitswitch/leaks.py:89
+#: gitswitch/leaks.py:130
 #, python-brace-format
 msgid "The token currently stored for {account}."
 msgstr ""
 
-#: gitswitch/leaks.py:93
+#: gitswitch/leaks.py:134
 msgid "Looks like an access token."
 msgstr ""
 
-#: gitswitch/leaks.py:95
+#: gitswitch/leaks.py:136
 msgid "A private key."
 msgstr ""
 
-#: gitswitch/leaks.py:99
+#: gitswitch/leaks.py:140
 #, python-brace-format
 msgid "Address of your self-hosted server {host}."
 msgstr ""
 
-#: gitswitch/leaks.py:103
+#: gitswitch/leaks.py:144
 msgid "Your real git e-mail address."
 msgstr ""
 
-#: gitswitch/leaks.py:105
+#: gitswitch/leaks.py:146
 msgid "An e-mail address; check that it is meant to be public."
 msgstr ""
 
-#: gitswitch/leaks.py:107
+#: gitswitch/leaks.py:148
 msgid "A path inside your home directory; it reveals your user name."
 msgstr ""
 
-#: gitswitch/leaks.py:109
+#: gitswitch/leaks.py:150
 msgid "The name of this computer."
 msgstr ""
 
-#: gitswitch/leaks.py:116
+#: gitswitch/leaks.py:157
 msgid "An address from a private network."
 msgstr ""
 
-#: gitswitch/leaks.py:118
+#: gitswitch/leaks.py:159
 msgid "A host name from an internal network."
 msgstr ""
 
-#: gitswitch/leaks.py:137
+#: gitswitch/leaks.py:163
+#, python-brace-format
+msgid "An attribution line naming {term}."
+msgstr ""
+
+#: gitswitch/leaks.py:165
+#, python-brace-format
+msgid "A mention of {term}."
+msgstr ""
+
+#: gitswitch/leaks.py:173
+#, python-brace-format
+msgid "This belongs only in {repository}."
+msgstr ""
+
+#: gitswitch/leaks.py:174
+msgid "This is not meant to be published."
+msgstr ""
+
+#: gitswitch/leaks.py:181
+#, python-brace-format
+msgid "A file on your restricted list ({term})."
+msgstr ""
+
+#: gitswitch/leaks.py:199
 #, python-brace-format
 msgid "{path} does not exist."
 msgstr ""
 
-#: gitswitch/leaks.py:172
+#: gitswitch/leaks.py:244
 #, python-brace-format
 msgid "{path} is not a git repository."
 msgstr ""
 
-#: gitswitch/mcp.py:22
+#: gitswitch/mcp.py:23
 msgid ""
 "List the accounts Git-Switch manages, per host: the GitHub accounts the "
 "GitHub CLI (gh) is logged in to and Forgejo or Gitea accounts, including "
@@ -655,7 +679,7 @@ msgid ""
 "returned."
 msgstr ""
 
-#: gitswitch/mcp.py:32
+#: gitswitch/mcp.py:33
 msgid ""
 "Switch the active account of a host: gh auth switch for GitHub, or the "
 "account git uses for a Forgejo or Gitea host. This applies to the whole "
@@ -663,15 +687,15 @@ msgid ""
 "global git user.name/user.email follow."
 msgstr ""
 
-#: gitswitch/mcp.py:39
+#: gitswitch/mcp.py:40
 msgid "Login name of the account to activate"
 msgstr ""
 
-#: gitswitch/mcp.py:42
+#: gitswitch/mcp.py:43
 msgid "Host name, only needed if the login exists on several hosts"
 msgstr ""
 
-#: gitswitch/mcp.py:52
+#: gitswitch/mcp.py:53
 msgid ""
 "Read from the REST API of a Forgejo or Gitea server as the active account, "
 "like 'gh api' for GitHub. The path is relative to /api/v1, for example /user/"
@@ -681,15 +705,15 @@ msgid ""
 "returned."
 msgstr ""
 
-#: gitswitch/mcp.py:60 gitswitch/mcp.py:80
+#: gitswitch/mcp.py:61 gitswitch/mcp.py:81
 msgid "API path below /api/v1, starting with /"
 msgstr ""
 
-#: gitswitch/mcp.py:61 gitswitch/mcp.py:82 gitswitch/mcp.py:101
+#: gitswitch/mcp.py:62 gitswitch/mcp.py:83 gitswitch/mcp.py:102
 msgid "Server, only needed if several are signed in"
 msgstr ""
 
-#: gitswitch/mcp.py:71
+#: gitswitch/mcp.py:72
 msgid ""
 "Change something through the REST API of a Forgejo or Gitea server as the "
 "active account: create or edit issues, comments, pull requests, releases and "
@@ -698,30 +722,30 @@ msgid ""
 "relative to /api/v1. DELETE requests remove data permanently."
 msgstr ""
 
-#: gitswitch/mcp.py:81
+#: gitswitch/mcp.py:82
 msgid "JSON body of the request"
 msgstr ""
 
-#: gitswitch/mcp.py:92
+#: gitswitch/mcp.py:93
 msgid ""
 "Attach a local file to an existing release on a Forgejo or Gitea server. "
 "Create the release first with forgejo_api_write (POST /repos/OWNER/NAME/"
 "releases)."
 msgstr ""
 
-#: gitswitch/mcp.py:98
+#: gitswitch/mcp.py:99
 msgid "Repository as owner/name"
 msgstr ""
 
-#: gitswitch/mcp.py:99
+#: gitswitch/mcp.py:100
 msgid "Tag of the release"
 msgstr ""
 
-#: gitswitch/mcp.py:100
+#: gitswitch/mcp.py:101
 msgid "Path of the local file to upload"
 msgstr ""
 
-#: gitswitch/mcp.py:111
+#: gitswitch/mcp.py:112
 msgid ""
 "Check content for private data before it is published: live tokens of the "
 "signed-in accounts, other access tokens and private keys, addresses of the "
@@ -734,65 +758,82 @@ msgid ""
 "findings with the user instead of publishing them."
 msgstr ""
 
-#: gitswitch/mcp.py:122
+#: gitswitch/mcp.py:123
 msgid "Text to check, for example a draft README or message"
 msgstr ""
 
-#: gitswitch/mcp.py:123
+#: gitswitch/mcp.py:124
 msgid "Files or folders to check"
 msgstr ""
 
-#: gitswitch/mcp.py:126
+#: gitswitch/mcp.py:127
 msgid ""
 "Git working copy; checks staged changes and commits not yet on the upstream"
 msgstr ""
 
-#: gitswitch/mcp.py:142
+#: gitswitch/mcp.py:143
 msgid ""
 "Before publishing anything on the user's behalf (commit, push, release, "
 "issue, pull request, README), run check_for_leaks on it and resolve the "
 "findings with the user."
 msgstr ""
 
+#: gitswitch/mcp.py:150
+#, python-brace-format
+msgid ""
+"Do not mention {terms} in anything you publish, and add no Co-Authored-By or "
+"'Generated with' lines naming them."
+msgstr ""
+
 #: gitswitch/mcp.py:154
+#, python-brace-format
+msgid "Such notes belong only in the repository {repository}."
+msgstr ""
+
+#: gitswitch/mcp.py:164
 #, python-brace-format
 msgid ""
 "Git-Switch was updated to {version}; restart the client so this MCP server "
 "runs the new version."
 msgstr ""
 
-#: gitswitch/mcp.py:160
+#: gitswitch/mcp.py:170
 #, python-brace-format
 msgid "Git-Switch {version} is available: {url}"
 msgstr ""
 
-#: gitswitch/mcp.py:169
+#: gitswitch/mcp.py:179
 #, python-brace-format
 msgid "Not sent: the request contains a secret ({detail})"
 msgstr ""
 
-#: gitswitch/mcp.py:190
+#: gitswitch/mcp.py:189
+#, python-brace-format
+msgid "Not sent: {detail}"
+msgstr ""
+
+#: gitswitch/mcp.py:210
 msgid "'user' is required"
 msgstr ""
 
-#: gitswitch/mcp.py:197
+#: gitswitch/mcp.py:217
 msgid "Not sent: the file contains a secret."
 msgstr ""
 
-#: gitswitch/mcp.py:204
+#: gitswitch/mcp.py:229
 #, python-brace-format
 msgid "Unknown tool: {name}"
 msgstr ""
 
-#: gitswitch/mcp.py:239
+#: gitswitch/mcp.py:264
 msgid "[Result cut off; narrow the request or use ?limit= and ?page=.]"
 msgstr ""
 
-#: gitswitch/mcp.py:241
+#: gitswitch/mcp.py:266
 #, python-brace-format
 msgid "Method not found: {method}"
 msgstr ""
 
-#: gitswitch/mcp.py:253
+#: gitswitch/mcp.py:278
 msgid "Parse error"
 msgstr ""

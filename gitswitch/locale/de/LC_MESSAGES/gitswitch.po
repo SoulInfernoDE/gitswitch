@@ -58,7 +58,7 @@ msgstr "Keine privaten Daten gefunden."
 msgid "{count} finding(s)."
 msgstr "{count} Fund(e)."
 
-#: gitswitch/core.py:65 gitswitch/core.py:464
+#: gitswitch/core.py:65 gitswitch/core.py:466
 #, python-brace-format
 msgid "'{command}' was not found in PATH"
 msgstr "'{command}' wurde nicht im PATH gefunden"
@@ -78,21 +78,21 @@ msgstr "'{command}' ist fehlgeschlagen"
 msgid "Cannot read the profile of {user}; git identity left unchanged"
 msgstr "Profil von {user} nicht lesbar; Git-Identität bleibt unverändert"
 
-#: gitswitch/core.py:294
+#: gitswitch/core.py:296
 msgid "none"
 msgstr "keine"
 
-#: gitswitch/core.py:295
+#: gitswitch/core.py:297
 #, python-brace-format
 msgid "No logged-in account '{user}'. Known accounts: {known}"
 msgstr "Kein angemeldetes Konto '{user}'. Bekannte Konten: {known}"
 
-#: gitswitch/core.py:297
+#: gitswitch/core.py:299
 #, python-brace-format
 msgid "'{user}' exists on several hosts; pass a hostname"
 msgstr "'{user}' existiert auf mehreren Hosts; bitte Hostnamen angeben"
 
-#: gitswitch/core.py:348
+#: gitswitch/core.py:350
 #, python-brace-format
 msgid ""
 "{host} is a Forgejo or Gitea server, not GitHub Enterprise. Choose \"Forgejo "
@@ -102,87 +102,87 @@ msgstr ""
 "unter „Konto bei“ den Eintrag „Forgejo oder Gitea“, um das Konto "
 "hinzuzufügen."
 
-#: gitswitch/core.py:408
+#: gitswitch/core.py:410
 msgid "Full access to repositories"
 msgstr "Vollzugriff auf Repositories"
 
-#: gitswitch/core.py:409
+#: gitswitch/core.py:411
 msgid "Read organization and team membership"
 msgstr "Organisations- und Team-Mitgliedschaften lesen"
 
-#: gitswitch/core.py:410
+#: gitswitch/core.py:412
 msgid "Create and edit gists"
 msgstr "Gists erstellen und bearbeiten"
 
-#: gitswitch/core.py:411
+#: gitswitch/core.py:413
 msgid "Update GitHub Actions workflow files"
 msgstr "Workflow-Dateien von GitHub Actions ändern"
 
-#: gitswitch/core.py:412
+#: gitswitch/core.py:414
 msgid "Delete repositories"
 msgstr "Repositories löschen"
 
-#: gitswitch/core.py:413
+#: gitswitch/core.py:415
 msgid "Download packages"
 msgstr "Pakete herunterladen"
 
-#: gitswitch/core.py:414
+#: gitswitch/core.py:416
 msgid "Upload packages"
 msgstr "Pakete hochladen"
 
-#: gitswitch/core.py:415
+#: gitswitch/core.py:417
 msgid "Delete packages"
 msgstr "Pakete löschen"
 
-#: gitswitch/core.py:416
+#: gitswitch/core.py:418
 msgid "Manage SSH keys"
 msgstr "SSH-Schlüssel verwalten"
 
-#: gitswitch/core.py:417
+#: gitswitch/core.py:419
 msgid "Manage SSH signing keys"
 msgstr "SSH-Signaturschlüssel verwalten"
 
-#: gitswitch/core.py:418
+#: gitswitch/core.py:420
 msgid "Manage GPG keys"
 msgstr "GPG-Schlüssel verwalten"
 
-#: gitswitch/core.py:419
+#: gitswitch/core.py:421
 msgid "Read and edit profile data"
 msgstr "Profildaten lesen und bearbeiten"
 
-#: gitswitch/core.py:420
+#: gitswitch/core.py:422
 msgid "Read notifications"
 msgstr "Benachrichtigungen lesen"
 
-#: gitswitch/core.py:421
+#: gitswitch/core.py:423
 msgid "Manage projects"
 msgstr "Projekte verwalten"
 
-#: gitswitch/core.py:422
+#: gitswitch/core.py:424
 msgid "Read projects"
 msgstr "Projekte lesen"
 
-#: gitswitch/core.py:423
+#: gitswitch/core.py:425
 msgid "Create and manage codespaces"
 msgstr "Codespaces erstellen und verwalten"
 
-#: gitswitch/core.py:424
+#: gitswitch/core.py:426
 msgid "Manage organizations and teams"
 msgstr "Organisationen und Teams verwalten"
 
-#: gitswitch/core.py:425
+#: gitswitch/core.py:427
 msgid "Manage repository webhooks"
 msgstr "Repository-Webhooks verwalten"
 
-#: gitswitch/core.py:426
+#: gitswitch/core.py:428
 msgid "Read and write security events"
 msgstr "Sicherheitsereignisse lesen und schreiben"
 
-#: gitswitch/core.py:427
+#: gitswitch/core.py:429
 msgid "Read and write team discussions"
 msgstr "Team-Diskussionen lesen und schreiben"
 
-#: gitswitch/core.py:520
+#: gitswitch/core.py:522
 #, python-brace-format
 msgid "{path} does not exist; is Claude Code installed?"
 msgstr "{path} existiert nicht; ist Claude Code installiert?"
@@ -223,7 +223,7 @@ msgstr "Kein Token für {user} im System-Schlüsselbund; bitte neu anmelden."
 msgid "Request to {host} failed: {detail}"
 msgstr "Anfrage an {host} fehlgeschlagen: {detail}"
 
-#: gitswitch/forge.py:185 gitswitch/mcp.py:201
+#: gitswitch/forge.py:185 gitswitch/mcp.py:222
 #, python-brace-format
 msgid "Unsupported method: {method}"
 msgstr "Nicht unterstützte Methode: {method}"
@@ -614,59 +614,83 @@ msgstr "MCP-Server in Claude Code registriert"
 msgid "MCP server removed from Claude Code"
 msgstr "MCP-Server aus Claude Code entfernt"
 
-#: gitswitch/leaks.py:89
+#: gitswitch/leaks.py:130
 #, python-brace-format
 msgid "The token currently stored for {account}."
 msgstr "Das aktuell für {account} gespeicherte Token."
 
-#: gitswitch/leaks.py:93
+#: gitswitch/leaks.py:134
 msgid "Looks like an access token."
 msgstr "Sieht aus wie ein Zugriffstoken."
 
-#: gitswitch/leaks.py:95
+#: gitswitch/leaks.py:136
 msgid "A private key."
 msgstr "Ein privater Schlüssel."
 
-#: gitswitch/leaks.py:99
+#: gitswitch/leaks.py:140
 #, python-brace-format
 msgid "Address of your self-hosted server {host}."
 msgstr "Adresse deines selbst betriebenen Servers {host}."
 
-#: gitswitch/leaks.py:103
+#: gitswitch/leaks.py:144
 msgid "Your real git e-mail address."
 msgstr "Deine echte Git-E-Mail-Adresse."
 
-#: gitswitch/leaks.py:105
+#: gitswitch/leaks.py:146
 msgid "An e-mail address; check that it is meant to be public."
 msgstr "Eine E-Mail-Adresse; bitte prüfen, ob sie öffentlich sein soll."
 
-#: gitswitch/leaks.py:107
+#: gitswitch/leaks.py:148
 msgid "A path inside your home directory; it reveals your user name."
 msgstr "Ein Pfad in deinem Home-Verzeichnis; er verrät deinen Benutzernamen."
 
-#: gitswitch/leaks.py:109
+#: gitswitch/leaks.py:150
 msgid "The name of this computer."
 msgstr "Der Name dieses Rechners."
 
-#: gitswitch/leaks.py:116
+#: gitswitch/leaks.py:157
 msgid "An address from a private network."
 msgstr "Eine Adresse aus einem privaten Netz."
 
-#: gitswitch/leaks.py:118
+#: gitswitch/leaks.py:159
 msgid "A host name from an internal network."
 msgstr "Ein Hostname aus einem internen Netz."
 
-#: gitswitch/leaks.py:137
+#: gitswitch/leaks.py:163
+#, python-brace-format
+msgid "An attribution line naming {term}."
+msgstr "Eine Mitautor-Zeile, die {term} nennt."
+
+#: gitswitch/leaks.py:165
+#, python-brace-format
+msgid "A mention of {term}."
+msgstr "Eine Erwähnung von {term}."
+
+#: gitswitch/leaks.py:173
+#, python-brace-format
+msgid "This belongs only in {repository}."
+msgstr "Das gehört nur nach {repository}."
+
+#: gitswitch/leaks.py:174
+msgid "This is not meant to be published."
+msgstr "Das soll nicht veröffentlicht werden."
+
+#: gitswitch/leaks.py:181
+#, python-brace-format
+msgid "A file on your restricted list ({term})."
+msgstr "Eine Datei von deiner Sperrliste ({term})."
+
+#: gitswitch/leaks.py:199
 #, python-brace-format
 msgid "{path} does not exist."
 msgstr "{path} existiert nicht."
 
-#: gitswitch/leaks.py:172
+#: gitswitch/leaks.py:244
 #, python-brace-format
 msgid "{path} is not a git repository."
 msgstr "{path} ist kein Git-Repository."
 
-#: gitswitch/mcp.py:22
+#: gitswitch/mcp.py:23
 msgid ""
 "List the accounts Git-Switch manages, per host: the GitHub accounts the "
 "GitHub CLI (gh) is logged in to and Forgejo or Gitea accounts, including "
@@ -678,7 +702,7 @@ msgstr ""
 "Gitea-Konten, einschließlich des aktiven Kontos und der Gültigkeit der "
 "Tokens. Tokens werden nie zurückgegeben."
 
-#: gitswitch/mcp.py:32
+#: gitswitch/mcp.py:33
 msgid ""
 "Switch the active account of a host: gh auth switch for GitHub, or the "
 "account git uses for a Forgejo or Gitea host. This applies to the whole "
@@ -690,15 +714,15 @@ msgstr ""
 "den ganzen Rechner, nicht nur für diese Sitzung. Falls in Git-Switch "
 "aktiviert, folgen globales git user.name/user.email."
 
-#: gitswitch/mcp.py:39
+#: gitswitch/mcp.py:40
 msgid "Login name of the account to activate"
 msgstr "Anmeldename des zu aktivierenden Kontos"
 
-#: gitswitch/mcp.py:42
+#: gitswitch/mcp.py:43
 msgid "Host name, only needed if the login exists on several hosts"
 msgstr "Hostname, nur nötig, wenn der Anmeldename auf mehreren Hosts existiert"
 
-#: gitswitch/mcp.py:52
+#: gitswitch/mcp.py:53
 msgid ""
 "Read from the REST API of a Forgejo or Gitea server as the active account, "
 "like 'gh api' for GitHub. The path is relative to /api/v1, for example /user/"
@@ -714,15 +738,15 @@ msgstr ""
 "contents/PATH. Listen werden mit ?page= und ?limit= geblättert. Das Token "
 "wird nie zurückgegeben."
 
-#: gitswitch/mcp.py:60 gitswitch/mcp.py:80
+#: gitswitch/mcp.py:61 gitswitch/mcp.py:81
 msgid "API path below /api/v1, starting with /"
 msgstr "API-Pfad unterhalb von /api/v1, beginnend mit /"
 
-#: gitswitch/mcp.py:61 gitswitch/mcp.py:82 gitswitch/mcp.py:101
+#: gitswitch/mcp.py:62 gitswitch/mcp.py:83 gitswitch/mcp.py:102
 msgid "Server, only needed if several are signed in"
 msgstr "Server, nur nötig, wenn mehrere angemeldet sind"
 
-#: gitswitch/mcp.py:71
+#: gitswitch/mcp.py:72
 msgid ""
 "Change something through the REST API of a Forgejo or Gitea server as the "
 "active account: create or edit issues, comments, pull requests, releases and "
@@ -737,11 +761,11 @@ msgstr ""
 "NAME/mirror-sync). Der Pfad ist relativ zu /api/v1. DELETE-Anfragen löschen "
 "Daten endgültig."
 
-#: gitswitch/mcp.py:81
+#: gitswitch/mcp.py:82
 msgid "JSON body of the request"
 msgstr "JSON-Inhalt der Anfrage"
 
-#: gitswitch/mcp.py:92
+#: gitswitch/mcp.py:93
 msgid ""
 "Attach a local file to an existing release on a Forgejo or Gitea server. "
 "Create the release first with forgejo_api_write (POST /repos/OWNER/NAME/"
@@ -751,19 +775,19 @@ msgstr ""
 "Gitea-Server an. Das Release vorher mit forgejo_api_write anlegen (POST /"
 "repos/OWNER/NAME/releases)."
 
-#: gitswitch/mcp.py:98
+#: gitswitch/mcp.py:99
 msgid "Repository as owner/name"
 msgstr "Repository als besitzer/name"
 
-#: gitswitch/mcp.py:99
+#: gitswitch/mcp.py:100
 msgid "Tag of the release"
 msgstr "Tag des Releases"
 
-#: gitswitch/mcp.py:100
+#: gitswitch/mcp.py:101
 msgid "Path of the local file to upload"
 msgstr "Pfad der lokalen Datei, die hochgeladen wird"
 
-#: gitswitch/mcp.py:111
+#: gitswitch/mcp.py:112
 msgid ""
 "Check content for private data before it is published: live tokens of the "
 "signed-in accounts, other access tokens and private keys, addresses of the "
@@ -785,22 +809,22 @@ msgstr ""
 "Funde der Stufe 'secret' müssen entfernt werden; Funde der Stufen 'private' "
 "und 'review' mit dem Nutzer besprechen, statt sie zu veröffentlichen."
 
-#: gitswitch/mcp.py:122
+#: gitswitch/mcp.py:123
 msgid "Text to check, for example a draft README or message"
 msgstr "Zu prüfender Text, zum Beispiel ein README-Entwurf oder eine Nachricht"
 
-#: gitswitch/mcp.py:123
+#: gitswitch/mcp.py:124
 msgid "Files or folders to check"
 msgstr "Zu prüfende Dateien oder Ordner"
 
-#: gitswitch/mcp.py:126
+#: gitswitch/mcp.py:127
 msgid ""
 "Git working copy; checks staged changes and commits not yet on the upstream"
 msgstr ""
 "Git-Arbeitskopie; prüft vorgemerkte Änderungen und Commits, die dem Upstream "
 "noch fehlen"
 
-#: gitswitch/mcp.py:142
+#: gitswitch/mcp.py:143
 msgid ""
 "Before publishing anything on the user's behalf (commit, push, release, "
 "issue, pull request, README), run check_for_leaks on it and resolve the "
@@ -810,7 +834,21 @@ msgstr ""
 "Issue, Pull Request, README), check_for_leaks darauf ausführen und die Funde "
 "mit dem Nutzer klären."
 
+#: gitswitch/mcp.py:150
+#, python-brace-format
+msgid ""
+"Do not mention {terms} in anything you publish, and add no Co-Authored-By or "
+"'Generated with' lines naming them."
+msgstr ""
+"{terms} in nichts erwähnen, was veröffentlicht wird, und keine Co-Authored-"
+"By- oder „Generated with“-Zeilen hinzufügen, die sie nennen."
+
 #: gitswitch/mcp.py:154
+#, python-brace-format
+msgid "Such notes belong only in the repository {repository}."
+msgstr "Solche Hinweise gehören nur in das Repository {repository}."
+
+#: gitswitch/mcp.py:164
 #, python-brace-format
 msgid ""
 "Git-Switch was updated to {version}; restart the client so this MCP server "
@@ -819,40 +857,45 @@ msgstr ""
 "Git-Switch wurde auf {version} aktualisiert; den Client neu starten, damit "
 "dieser MCP-Server die neue Version ausführt."
 
-#: gitswitch/mcp.py:160
+#: gitswitch/mcp.py:170
 #, python-brace-format
 msgid "Git-Switch {version} is available: {url}"
 msgstr "Git-Switch {version} ist verfügbar: {url}"
 
-#: gitswitch/mcp.py:169
+#: gitswitch/mcp.py:179
 #, python-brace-format
 msgid "Not sent: the request contains a secret ({detail})"
 msgstr "Nicht gesendet: Die Anfrage enthält ein Geheimnis ({detail})"
 
-#: gitswitch/mcp.py:190
+#: gitswitch/mcp.py:189
+#, python-brace-format
+msgid "Not sent: {detail}"
+msgstr "Nicht gesendet: {detail}"
+
+#: gitswitch/mcp.py:210
 msgid "'user' is required"
 msgstr "'user' ist erforderlich"
 
-#: gitswitch/mcp.py:197
+#: gitswitch/mcp.py:217
 msgid "Not sent: the file contains a secret."
 msgstr "Nicht gesendet: Die Datei enthält ein Geheimnis."
 
-#: gitswitch/mcp.py:204
+#: gitswitch/mcp.py:229
 #, python-brace-format
 msgid "Unknown tool: {name}"
 msgstr "Unbekanntes Tool: {name}"
 
-#: gitswitch/mcp.py:239
+#: gitswitch/mcp.py:264
 msgid "[Result cut off; narrow the request or use ?limit= and ?page=.]"
 msgstr ""
 "[Ergebnis abgeschnitten; Anfrage eingrenzen oder ?limit= und ?page= "
 "verwenden.]"
 
-#: gitswitch/mcp.py:241
+#: gitswitch/mcp.py:266
 #, python-brace-format
 msgid "Method not found: {method}"
 msgstr "Methode nicht gefunden: {method}"
 
-#: gitswitch/mcp.py:253
+#: gitswitch/mcp.py:278
 msgid "Parse error"
 msgstr "Syntaxfehler"
