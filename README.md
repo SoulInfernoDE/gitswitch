@@ -157,6 +157,24 @@ Forgejo write tools refuse requests that contain a secret. Entries listed
 under `leak_allow` in `~/.config/gitswitch/config.json` are ignored, for
 example a server that is meant to be public.
 
+You can also keep your own terms out of published content, for example the
+name of a tool you do not want credited, and allow them in exactly one
+repository:
+
+```json
+"restricted": {
+  "terms": ["Example Tool"],
+  "files": ["EXAMPLE.md", ".example"],
+  "repository": "git.example.com/you/notes"
+}
+```
+
+The leak check then reports these terms, attribution lines naming them and
+the listed files everywhere except in pushes to that repository, the MCP
+server passes the rule on to the model, and the Forgejo write tools refuse
+requests that break it. The terms stay in your settings and never appear in
+the code.
+
 The check reads text only: it cannot see what an image such as a screenshot
 shows.
 

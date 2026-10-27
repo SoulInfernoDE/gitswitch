@@ -164,6 +164,24 @@ Geheimnis enthalten. Einträge unter `leak_allow` in
 `~/.config/gitswitch/config.json` werden ignoriert, zum Beispiel ein Server,
 der öffentlich sein soll.
 
+Außerdem lassen sich eigene Begriffe aus veröffentlichten Inhalten
+heraushalten, zum Beispiel der Name eines Werkzeugs, das nicht genannt werden
+soll, und in genau einem Repository erlauben:
+
+```json
+"restricted": {
+  "terms": ["Example Tool"],
+  "files": ["EXAMPLE.md", ".example"],
+  "repository": "git.example.com/you/notes"
+}
+```
+
+Die Leak-Prüfung meldet diese Begriffe, Mitautor-Zeilen, die sie nennen, und
+die aufgeführten Dateien dann überall außer bei Pushes in dieses Repository,
+der MCP-Server gibt die Regel an das Modell weiter, und die
+Forgejo-Schreib-Tools lehnen Anfragen ab, die sie verletzen. Die Begriffe
+bleiben in deinen Einstellungen und stehen nie im Code.
+
 Die Prüfung liest nur Text: Was ein Bild wie ein Screenshot zeigt, kann sie
 nicht erkennen.
 
