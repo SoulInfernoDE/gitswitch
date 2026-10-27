@@ -172,9 +172,14 @@ soll, und in genau einem Repository erlauben:
 "restricted": {
   "terms": ["Example Tool"],
   "files": ["EXAMPLE.md", ".example"],
-  "repository": "git.example.com/you/notes"
+  "repository": "git.example.com/you/notes",
+  "allow": ["Example Tool integration"]
 }
 ```
+
+Zeilen mit einer der `allow`-Phrasen werden nicht gemeldet, damit eine
+Funktion, die dieses Werkzeug einbindet, es weiterhin nennen kann;
+Mitautor-Zeilen werden trotzdem gemeldet.
 
 Die Leak-Prüfung meldet diese Begriffe, Mitautor-Zeilen, die sie nennen, und
 die aufgeführten Dateien dann überall außer bei Pushes in dieses Repository,

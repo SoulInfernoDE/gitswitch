@@ -614,78 +614,78 @@ msgstr "MCP-Server in Claude Code registriert"
 msgid "MCP server removed from Claude Code"
 msgstr "MCP-Server aus Claude Code entfernt"
 
-#: gitswitch/leaks.py:130
+#: gitswitch/leaks.py:133
 #, python-brace-format
 msgid "The token currently stored for {account}."
 msgstr "Das aktuell für {account} gespeicherte Token."
 
-#: gitswitch/leaks.py:134
+#: gitswitch/leaks.py:137
 msgid "Looks like an access token."
 msgstr "Sieht aus wie ein Zugriffstoken."
 
-#: gitswitch/leaks.py:136
+#: gitswitch/leaks.py:139
 msgid "A private key."
 msgstr "Ein privater Schlüssel."
 
-#: gitswitch/leaks.py:140
+#: gitswitch/leaks.py:143
 #, python-brace-format
 msgid "Address of your self-hosted server {host}."
 msgstr "Adresse deines selbst betriebenen Servers {host}."
 
-#: gitswitch/leaks.py:144
+#: gitswitch/leaks.py:147
 msgid "Your real git e-mail address."
 msgstr "Deine echte Git-E-Mail-Adresse."
 
-#: gitswitch/leaks.py:146
+#: gitswitch/leaks.py:149
 msgid "An e-mail address; check that it is meant to be public."
 msgstr "Eine E-Mail-Adresse; bitte prüfen, ob sie öffentlich sein soll."
 
-#: gitswitch/leaks.py:148
+#: gitswitch/leaks.py:151
 msgid "A path inside your home directory; it reveals your user name."
 msgstr "Ein Pfad in deinem Home-Verzeichnis; er verrät deinen Benutzernamen."
 
-#: gitswitch/leaks.py:150
+#: gitswitch/leaks.py:153
 msgid "The name of this computer."
 msgstr "Der Name dieses Rechners."
 
-#: gitswitch/leaks.py:157
+#: gitswitch/leaks.py:160
 msgid "An address from a private network."
 msgstr "Eine Adresse aus einem privaten Netz."
 
-#: gitswitch/leaks.py:159
+#: gitswitch/leaks.py:162
 msgid "A host name from an internal network."
 msgstr "Ein Hostname aus einem internen Netz."
 
-#: gitswitch/leaks.py:163
+#: gitswitch/leaks.py:166
 #, python-brace-format
 msgid "An attribution line naming {term}."
 msgstr "Eine Mitautor-Zeile, die {term} nennt."
 
-#: gitswitch/leaks.py:165
+#: gitswitch/leaks.py:168
 #, python-brace-format
 msgid "A mention of {term}."
 msgstr "Eine Erwähnung von {term}."
 
-#: gitswitch/leaks.py:173
+#: gitswitch/leaks.py:176
 #, python-brace-format
 msgid "This belongs only in {repository}."
 msgstr "Das gehört nur nach {repository}."
 
-#: gitswitch/leaks.py:174
+#: gitswitch/leaks.py:177
 msgid "This is not meant to be published."
 msgstr "Das soll nicht veröffentlicht werden."
 
-#: gitswitch/leaks.py:181
+#: gitswitch/leaks.py:184
 #, python-brace-format
 msgid "A file on your restricted list ({term})."
 msgstr "Eine Datei von deiner Sperrliste ({term})."
 
-#: gitswitch/leaks.py:199
+#: gitswitch/leaks.py:202
 #, python-brace-format
 msgid "{path} does not exist."
 msgstr "{path} existiert nicht."
 
-#: gitswitch/leaks.py:244
+#: gitswitch/leaks.py:247
 #, python-brace-format
 msgid "{path} is not a git repository."
 msgstr "{path} ist kein Git-Repository."

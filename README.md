@@ -165,9 +165,14 @@ repository:
 "restricted": {
   "terms": ["Example Tool"],
   "files": ["EXAMPLE.md", ".example"],
-  "repository": "git.example.com/you/notes"
+  "repository": "git.example.com/you/notes",
+  "allow": ["Example Tool integration"]
 }
 ```
+
+Lines containing one of the `allow` phrases are not reported, so a feature
+that integrates with that tool can still name it; attribution lines are
+reported regardless.
 
 The leak check then reports these terms, attribution lines naming them and
 the listed files everywhere except in pushes to that repository, the MCP

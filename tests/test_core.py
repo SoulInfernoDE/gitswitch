@@ -329,6 +329,20 @@ class LeakTest(unittest.TestCase):
         api.assert_not_called()
 
 
+class RestrictedPhraseTest(unittest.TestCase):
+    def test_allowed_phrases_pass_but_attributions_do_not(self):
+        context = leaks.Context()
+        leaks._restricted_settings(context, {"restricted": {"terms": ["Acme"], "allow": ["Acme Studio", "acme-cli"]}})
+
+        def kinds(line):
+            return [finding.kind for finding in leaks.scan_line(line, "t", context)]
+
+        self.assertEqual(kinds("Integration with Acme Studio"), [])
+        self.assertEqual(kinds('run(["acme-cli", "add"])'), [])
+        self.assertEqual(kinds("Written by Acme"), ["restricted-term"])
+        self.assertEqual(kinds("Generated with Acme Studio"), ["restricted-attribution"])
+
+
 class UpdateTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
