@@ -235,48 +235,53 @@ msgstr "Kein Token für {user} im System-Schlüsselbund; bitte neu anmelden."
 msgid "Request to {host} failed: {detail}"
 msgstr "Anfrage an {host} fehlgeschlagen: {detail}"
 
-#: gitswitch/forge.py:205 gitswitch/mcp.py:265
+#: gitswitch/forge.py:205 gitswitch/mcp.py:268
 #, python-brace-format
 msgid "Unsupported method: {method}"
 msgstr "Nicht unterstützte Methode: {method}"
 
-#: gitswitch/forge.py:208
+#: gitswitch/forge.py:210
 msgid "The path must start with a single / and stay below the API root."
 msgstr ""
 "Der Pfad muss mit genau einem / beginnen und unterhalb des API-Stamms "
 "bleiben."
 
-#: gitswitch/forge.py:210
+#: gitswitch/forge.py:212
 msgid "Endpoints that create or list credentials are not available here."
 msgstr ""
 "Endpunkte, die Zugangsdaten erzeugen oder auflisten, stehen hier nicht zur "
 "Verfügung."
 
-#: gitswitch/forge.py:219
+#: gitswitch/forge.py:223
+#, python-brace-format
+msgid "The URL must belong to {host} and use HTTPS."
+msgstr "Die URL muss zu {host} gehören und HTTPS verwenden."
+
+#: gitswitch/forge.py:236
 msgid "The repository must be given as owner/name."
 msgstr "Das Repository muss als besitzer/name angegeben werden."
 
-#: gitswitch/forge.py:221
+#: gitswitch/forge.py:238
 #, python-brace-format
 msgid "{path} is not a file."
 msgstr "{path} ist keine Datei."
 
-#: gitswitch/forge.py:242
+#: gitswitch/forge.py:259
 #, python-brace-format
 msgid "{host} is already set up as a different kind of server."
 msgstr "{host} ist bereits als andere Server-Art eingerichtet."
 
-#: gitswitch/forge.py:245
+#: gitswitch/forge.py:262
 #, python-brace-format
 msgid "{host} rejected the token."
 msgstr "{host} hat das Token abgelehnt."
 
-#: gitswitch/forge.py:248
+#: gitswitch/forge.py:265
 #, python-brace-format
 msgid "{host} did not answer like a GitLab server over HTTPS."
 msgstr "{host} hat über HTTPS nicht wie ein GitLab-Server geantwortet."
 
-#: gitswitch/forge.py:249
+#: gitswitch/forge.py:266
 #, python-brace-format
 msgid "{host} did not answer like a Forgejo or Gitea server over HTTPS."
 msgstr ""
@@ -958,22 +963,22 @@ msgstr "'user' ist erforderlich"
 msgid "Not sent: the file contains a secret."
 msgstr "Nicht gesendet: Die Datei enthält ein Geheimnis."
 
-#: gitswitch/mcp.py:272
+#: gitswitch/mcp.py:275
 #, python-brace-format
 msgid "Unknown tool: {name}"
 msgstr "Unbekanntes Tool: {name}"
 
-#: gitswitch/mcp.py:307
+#: gitswitch/mcp.py:310
 msgid "[Result cut off; narrow the request or use ?limit= and ?page=.]"
 msgstr ""
 "[Ergebnis abgeschnitten; Anfrage eingrenzen oder ?limit= und ?page= "
 "verwenden.]"
 
-#: gitswitch/mcp.py:309
+#: gitswitch/mcp.py:312
 #, python-brace-format
 msgid "Method not found: {method}"
 msgstr "Methode nicht gefunden: {method}"
 
-#: gitswitch/mcp.py:321
+#: gitswitch/mcp.py:324
 msgid "Parse error"
 msgstr "Syntaxfehler"

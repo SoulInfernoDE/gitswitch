@@ -210,10 +210,15 @@ class ForgeTest(unittest.TestCase):
         self.assertEqual((url, authorization, method), ("https://git.example.com/api/v1/repos/dana/x/issues", "token s3cret", "POST"))
         self.assertEqual(json.loads(data), {"title": "t"})
 
+    def test_api_accepts_the_path_with_or_without_its_root(self):
+        with mock.patch.object(core, "api_request", return_value=({}, {})) as request:
+            for path in ("/repos/dana/x", "repos/dana/x", "/api/v1/repos/dana/x", "https://git.example.com/api/v1/repos/dana/x"):
+                forge.api("GET", path)
+                self.assertEqual(request.call_args.args[0], "https://git.example.com/api/v1/repos/dana/x", path)
+
     def test_api_rejects_escaping_paths_and_credential_endpoints(self):
         with mock.patch.object(core, "api_request") as request:
             for method, path in (
-                ("GET", "repos/dana/x"),
                 ("GET", "//evil.example/api"),
                 ("GET", "/../../login"),
                 ("GET", "/repos/dana/x /y"),
@@ -290,6 +295,24 @@ class GitLabTest(unittest.TestCase):
             mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": call})
         url, authorization = request.call_args.args[:2]
         self.assertEqual((url, authorization), ("https://gitlab.com/api/v4/projects?membership=true", "Bearer glpat-secret"))
+
+    def test_path_forms_all_reach_api_v4(self):
+        with mock.patch.object(core, "api_request", return_value=({}, {})) as request:
+            for path in ("/user", "user", "/api/v4/user", "api/v4/user", "https://gitlab.com/api/v4/user"):
+                forge.api("GET", path, kind=forge.GITLAB)
+                self.assertEqual(request.call_args.args[0], "https://gitlab.com/api/v4/user", path)
+            forge.api("GET", "/api/v4?x=1", kind=forge.GITLAB)
+            self.assertEqual(request.call_args.args[0], "https://gitlab.com/api/v4/?x=1")
+            for path in ("https://evil.example/api/v4/user", "http://gitlab.com/api/v4/user", "/api/v4/../../x"):
+                with self.assertRaises(core.GhError, msg=path):
+                    forge.api("GET", path, kind=forge.GITLAB)
+
+    def test_forgejo_tool_on_a_gitlab_host_uses_api_v4(self):
+        with mock.patch.object(core, "api_request", return_value=({}, {})) as request:
+            call = {"name": "forgejo_api_get", "arguments": {"path": "/user", "hostname": "gitlab.com"}}
+            result = mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": call})["result"]
+        self.assertFalse(result.get("isError"))
+        self.assertEqual(request.call_args.args[0], "https://gitlab.com/api/v4/user")
 
     def test_public_gitlab_is_not_a_private_server(self):
         accounts = [self.account, core.Account("gitlab.example.com", "dana", True, forge.GITLAB)]

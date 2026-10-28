@@ -260,6 +260,9 @@ def _call_tool(name: str, arguments: dict) -> object:
             _refuse_restricted(host, text.get("repository", ""), leaks.scan_paths([text.get("file", "")]))
             return forge.upload_release_asset(text.get("repository", ""), text.get("tag", ""), text.get("file", ""), host)
         kind = forge.GITLAB if name.startswith("gitlab_") else forge.FORGEJO
+        if host and forge.host_kind(host) in forge.KINDS and host in {a.host for a in forge.list_accounts()}:
+            # A known host decides which API it speaks, whichever of the two tool families was called.
+            kind = forge.host_kind(host)
         method = "GET" if name.endswith("_api_get") else text.get("method", "").upper()
         if name.endswith("_api_write") and method not in ("POST", "PUT", "PATCH", "DELETE"):
             raise core.GhError(_("Unsupported method: {method}").format(method=method))

@@ -203,13 +203,30 @@ def api(method: str, path: str, body: object = None, host: str | None = None, ki
     method = method.upper()
     if method not in API_METHODS:
         raise core.GhError(_("Unsupported method: {method}").format(method=method))
+    account = _api_account(host, kind)
+    path = _relative_path(path, account)
     segments = path.split("?", 1)[0].split("/")
     if not path.startswith("/") or path.startswith("//") or ".." in segments or any(c.isspace() for c in path):
         raise core.GhError(_("The path must start with a single / and stay below the API root."))
     if _CREDENTIAL_PATH.search(path):
         raise core.GhError(_("Endpoints that create or list credentials are not available here."))
     data = None if body is None else json.dumps(body).encode()
-    return _api_call(_api_account(host, kind), method, path, data, "application/json", 60)
+    return _api_call(account, method, path, data, "application/json", 60)
+
+
+def _relative_path(path: str, account: core.Account) -> str:
+    """Accept the API path with or without its root, or as a full URL of the account's server."""
+    root, text = _API_ROOT[account.kind], path.strip()
+    if "://" in text:
+        origin = f"https://{account.host}"
+        if not text.lower().startswith(origin.lower() + "/"):
+            raise core.GhError(_("The URL must belong to {host} and use HTTPS.").format(host=account.host))
+        text = text[len(origin):]
+    if not text.startswith("/"):
+        text = "/" + text
+    if text == root or text.startswith((root + "/", root + "?")):
+        text = text[len(root):]
+    return text if text.startswith("/") else "/" + text
 
 
 def upload_release_asset(repository: str, tag: str, file: str, host: str | None = None) -> object:
