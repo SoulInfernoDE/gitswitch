@@ -37,7 +37,8 @@ Description: GUI and MCP server for switching GitHub CLI accounts
  A small GTK window around "gh auth switch" that lists the accounts gh is
  logged in to, shows whether their tokens are still valid and switches
  between them, optionally keeping the global git identity in sync. Also
- manages Forgejo and Gitea accounts with tokens kept in the system keyring.
+ manages Forgejo, Gitea and GitLab accounts with tokens kept in the system
+ keyring.
  Ships an MCP server so coding agents can switch accounts as well.
 CONTROL
 

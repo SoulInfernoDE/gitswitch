@@ -21,6 +21,8 @@ from . import __version__
 from .i18n import _
 
 DEFAULT_HOST = "github.com"
+# Hosted services anyone can see; every other server counts as the user's own.
+PUBLIC_HOSTS = frozenset({"github.com", "gitlab.com", "codeberg.org", "gitea.com"})
 _CODE_RE = re.compile(r"\b[A-Z0-9]{4}-[A-Z0-9]{4}\b")
 
 
@@ -229,6 +231,8 @@ def fetch_avatar(url: str, size: int = 96) -> bytes:
 
 def noreply_email(host: str, profile: Profile, kind: str = "github") -> str:
     """Address that hides the real one; Forgejo and Gitea use ``login@noreply.<host>`` by default."""
+    if kind == "gitlab":
+        return f"{profile.user_id}-{profile.login}@users.noreply.{host.split(':')[0]}"
     if kind != "github":
         return f"{profile.login}@noreply.{host.split(':')[0]}"
     return f"{profile.user_id}+{profile.login}@users.noreply.{host}"
@@ -327,28 +331,72 @@ def normalize_host(text: str) -> str:
     return host.split("/", 1)[0]
 
 
-def _reachable(url: str) -> bool:
-    request = urllib.request.Request(url, headers={"User-Agent": f"gitswitch/{__version__}"})
+def _probe(url: str) -> tuple[int, object]:
+    """Anonymous GET; returns the status and the JSON body, or ``(status, None)`` if the body is not JSON.
+
+    Redirects are not followed: many servers send unknown paths to a sign-in page,
+    which must not count as an answer. Error answers count, since servers that
+    require a sign-in still reply to their API paths in their own format.
+    """
+    request = urllib.request.Request(url, headers={"User-Agent": f"gitswitch/{__version__}", "Accept": "application/json"})
     try:
-        with urllib.request.urlopen(request, timeout=8) as response:
-            return response.status == 200
+        with _api_opener.open(request, timeout=8) as response:
+            status, body = response.status, response.read()
+    except urllib.error.HTTPError as error:
+        status, body = error.code, error.read()
     except (OSError, ValueError):
+        return 0, None
+    try:
+        return status, json.loads(body.decode("utf-8", "replace"))
+    except ValueError:
+        return status, None
+
+
+def _api_answer(url: str, version_keys: tuple[str, ...]) -> bool:
+    """Whether ``url`` behaves like that API: a version object, or a JSON refusal asking to sign in."""
+    status, data = _probe(url)
+    if not isinstance(data, dict):
         return False
+    if status == 200:
+        return any(isinstance(data.get(key), str) for key in version_keys)
+    return status in (401, 403) and isinstance(data.get("message"), str)
+
+
+def server_family(host: str) -> str:
+    """Best guess of the software behind ``host``: "github", "forgejo", "gitlab" or "" if unknown."""
+    if host == DEFAULT_HOST:
+        return "github"
+    if host == "gitlab.com":
+        return "gitlab"
+    status, meta = _probe(f"https://{host}/api/v3/meta")
+    if status == 200 and isinstance(meta, dict) and ("installed_version" in meta or "verifiable_password_authentication" in meta):
+        return "github"
+    if _api_answer(f"https://{host}/api/v1/version", ("version",)):
+        return "forgejo"
+    if _api_answer(f"https://{host}/api/v4/version", ("version", "revision")):
+        return "gitlab"
+    return ""
 
 
 def check_github_server(host: str) -> None:
     """Refuse servers gh cannot talk to before starting a sign-in that must fail.
 
-    gh only speaks the GitHub API. Forgejo and Gitea are recognised by their
-    own API; anything undetermined is left to gh.
+    gh only speaks the GitHub API. Forgejo, Gitea and GitLab are recognised by
+    their own API; anything undetermined is left to gh.
     """
-    if host == DEFAULT_HOST or _reachable(f"https://{host}/api/v3/meta"):
-        return
-    if _reachable(f"https://{host}/api/v1/version"):
+    family = server_family(host)
+    if family == "forgejo":
         raise GhError(
             _(
                 "{host} is a Forgejo or Gitea server, not GitHub Enterprise. "
                 "Choose \"Forgejo or Gitea\" under \"Account on\" to add it."
+            ).format(host=host)
+        )
+    if family == "gitlab":
+        raise GhError(
+            _(
+                "{host} is a GitLab server, not GitHub Enterprise. "
+                "Choose \"GitLab\" under \"Account on\" to add it."
             ).format(host=host)
         )
 

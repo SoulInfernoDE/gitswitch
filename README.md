@@ -23,11 +23,11 @@ through the bundled MCP server.
 - Lists all accounts per host, with avatar, active marker and a live check
   whether the stored token still works
 - One-click switching (`gh auth switch`)
-- Add accounts through a guided dialog: GitHub.com, GitHub Enterprise or a
-  Forgejo/Gitea server, sign in in the browser or with an access token – no
-  terminal needed
-- Forgejo and Gitea accounts with the same safeguards gh applies to GitHub
-  tokens (see below)
+- Add accounts through a guided dialog: GitHub.com, GitHub Enterprise, a
+  Forgejo/Gitea server or GitLab, sign in in the browser or with an access
+  token – no terminal needed
+- Forgejo, Gitea and GitLab accounts with the same safeguards gh applies to
+  GitHub tokens (see below)
 - Sign out of single accounts
 - Shows the permissions (scopes) of each token; add or remove them by ticking
   boxes in a list with descriptions (`gh auth refresh`)
@@ -44,27 +44,27 @@ through the bundled MCP server.
 - Soft sound effects for switching, sign-in and errors (can be turned off)
 - English and German interface
 
-GitHub accounts are managed through the GitHub CLI; Forgejo and Gitea accounts
-are managed by Git-Switch itself. GitLab is not supported.
+GitHub accounts are managed through the GitHub CLI; Forgejo, Gitea and GitLab
+accounts are managed by Git-Switch itself.
 
 ## Install
 
 Requires `gh` ≥ 2.40, `git`, Python ≥ 3.10, GTK 4 and libadwaita ≥ 1.4.
-Forgejo/Gitea accounts additionally need libsecret and a running keyring
+Forgejo, Gitea and GitLab accounts additionally need libsecret and a running keyring
 (GNOME Keyring, KWallet or similar).
 
 **Debian / Ubuntu / Linux Mint** – download the `.deb` from the
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.5.1_all.deb
+sudo apt install ./gitswitch_0.6.0_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.5.1-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.6.0-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.
@@ -78,12 +78,20 @@ gitswitch switch <user>   # switch from the shell
 gitswitch leak-check      # check what the next push would publish
 ```
 
-## Forgejo and Gitea
+## Forgejo, Gitea and GitLab
 
-Choose **Forgejo or Gitea** in the add-account dialog, enter the server address
-and paste an access token (permissions `read:user` and `write:repository`).
+Choose **Forgejo or Gitea** or **GitLab** in the add-account dialog, enter the
+server address (`gitlab.com` is filled in for GitLab) and paste an access
+token. The button next to the token field opens the page that creates one:
+
+| Server | Token permissions |
+| --- | --- |
+| Forgejo, Gitea | `read:user`, `write:repository` |
+| GitLab | `read_user`, `write_repository`; add `api` for the GitLab tools of the MCP server |
+
 Git-Switch reads the account name from the server, so there is nothing else to
-type.
+type. If you pick GitHub Enterprise for a Forgejo, Gitea or GitLab server,
+Git-Switch recognises it and points you to the right entry.
 
 Tokens are handled the way gh handles GitHub tokens:
 
@@ -97,8 +105,9 @@ Tokens are handled the way gh handles GitHub tokens:
   follows redirects while doing so.
 - Tokens are not shown in the window and not returned by the command line or
   the MCP server.
-- With **Sync Git identity**, the address `login@noreply.<host>` is used, not
-  your real one. If your server uses a different no-reply domain, commits are
+- With **Sync Git identity**, a no-reply address is used, not your real one:
+  `login@noreply.<host>` for Forgejo and Gitea, `id-login@users.noreply.<host>`
+  for GitLab. If your server uses a different no-reply domain, commits are
   simply not linked to the account.
 
 A user name in a remote URL (`https://name@git.example.com/…`) selects that
@@ -117,19 +126,21 @@ Restart Claude Code afterwards. These tools become available:
 
 | Tool | Purpose |
 | --- | --- |
-| `list_github_accounts` | All accounts per host (GitHub, Forgejo, Gitea), the active one, token validity and scopes |
+| `list_github_accounts` | All accounts per host (GitHub, Forgejo, Gitea, GitLab), the active one, token validity and scopes |
 | `switch_github_account` | Activate an account (`user`, optional `hostname`) |
 | `forgejo_api_get` | Read from the REST API of a Forgejo/Gitea server, like `gh api` for GitHub |
 | `forgejo_api_write` | Change things through that API: issues, pull requests, releases, mirror sync … |
 | `forgejo_upload_release_asset` | Attach a local file to a release |
+| `gitlab_api_get` | Read from the REST API of a GitLab server |
+| `gitlab_api_write` | Change things through that API: issues, merge requests, releases, pipelines … |
 | `check_for_leaks` | Check text, files or the next push for private data before publishing |
 
 The names of the first two tools date from the GitHub-only versions; both
-cover Forgejo and Gitea accounts too. Switching is global: it changes the account for every
+cover Forgejo, Gitea and GitLab accounts too. Switching is global: it changes the account for every
 `gh` and `git` (HTTPS) process on the machine. The server never returns tokens.
 
-The Forgejo tools exist because there is no counterpart to the `gh` command for
-these servers. They act as the active account of the server. Reading and
+The Forgejo and GitLab tools exist because there is no counterpart to the `gh`
+command that Git-Switch could rely on for these servers. They act as the active account of the server. Reading and
 writing are separate tools so that reading can be allowed permanently while
 changes still ask for confirmation. Requests only go to a signed-in server,
 paths cannot leave its API, and endpoints that issue credentials are blocked.

@@ -106,7 +106,7 @@ def gather() -> Context:
             token = ""
         if token:
             context.tokens[token] = label
-        if account.host != core.DEFAULT_HOST:
+        if account.host not in core.PUBLIC_HOSTS:
             context.hosts.add(account.host.lower())
     email = core.get_git_identity()[1]
     if email and not _PLACEHOLDER_MAIL.search(email):

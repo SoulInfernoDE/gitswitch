@@ -180,8 +180,9 @@ class Window(Adw.ApplicationWindow):
             self.page.add(group)
         self.page.add(self.options)
 
-    def build_forge_group(self, host: str) -> Adw.PreferencesGroup:
-        group = Adw.PreferencesGroup(title=host, description=_("Forgejo or Gitea"))
+    def build_forge_group(self, host: str, kind: str = forge.FORGEJO) -> Adw.PreferencesGroup:
+        description = _("GitLab") if kind == forge.GITLAB else _("Forgejo or Gitea")
+        group = Adw.PreferencesGroup(title=host, description=description)
 
         def done(_result, error):
             if error:
@@ -206,7 +207,7 @@ class Window(Adw.ApplicationWindow):
     def build_host_group(self, host: str, kind: str = "github") -> Adw.PreferencesGroup:
         """Group for one host; its menu holds the per-host git settings of gh."""
         if kind != "github":
-            return self.build_forge_group(host)
+            return self.build_forge_group(host, kind)
         group = Adw.PreferencesGroup(title=host)
         actions = Gio.SimpleActionGroup()
         protocol = Gio.SimpleAction.new_stateful(
@@ -474,7 +475,7 @@ class Window(Adw.ApplicationWindow):
         """Dialog for adding an account: where it lives and how to sign in."""
         places = Adw.ComboRow(
             title=_("Account on"),
-            model=Gtk.StringList.new([_("GitHub.com"), _("GitHub Enterprise"), _("Forgejo or Gitea")]),
+            model=Gtk.StringList.new([_("GitHub.com"), _("GitHub Enterprise"), _("Forgejo or Gitea"), _("GitLab")]),
         )
         server = Adw.EntryRow(title=_("Server address, e.g. git.example.com"), text=forge_host, visible=False)
         methods = Adw.ComboRow(
@@ -500,18 +501,29 @@ class Window(Adw.ApplicationWindow):
         dialog.set_default_response("login")
 
         def is_forge() -> bool:
-            return places.get_selected() == 2
+            return places.get_selected() >= 2
+
+        def forge_kind() -> str:
+            return forge.GITLAB if places.get_selected() == 3 else forge.FORGEJO
 
         def host() -> str:
             return core.normalize_host(server.get_text()) if places.get_selected() else core.DEFAULT_HOST
 
         def update(*_args):
-            # Forgejo and Gitea have no browser sign-in for third-party apps, only tokens.
+            if places.get_selected() == 3 and not server.get_text().strip():
+                server.set_text("gitlab.com")
+            # Forgejo, Gitea and GitLab have no browser sign-in for third-party apps, only tokens.
             with_token = is_forge() or methods.get_selected() == 1
             server.set_visible(places.get_selected() != 0)
             methods.set_visible(not is_forge())
             token.set_visible(with_token)
-            if is_forge():
+            if forge_kind() == forge.GITLAB:
+                body = _(
+                    "Paste a personal access token; the button next to the field opens the page to create one. It "
+                    "needs the scopes read_user and write_repository, and api for the GitLab tools of the MCP server. "
+                    "The token is kept in the system keyring only."
+                )
+            elif is_forge():
                 body = _(
                     "Paste an access token of your server; the button next to the field opens the page to create "
                     "one. It needs the permissions read:user and write:repository. The token is kept in the "
@@ -522,7 +534,7 @@ class Window(Adw.ApplicationWindow):
             else:
                 body = _("Your browser opens GitHub, where you confirm a one-time code. No password is entered here.")
             if places.get_selected() == 1:
-                note = _("Only GitHub servers work here. For Forgejo or Gitea choose that entry above.")
+                note = _("Only GitHub servers work here. For Forgejo, Gitea or GitLab choose that entry above.")
                 body = f"{body}\n\n{note}"
             dialog.set_body(body)
             dialog.set_response_enabled("login", bool(host()) and (not with_token or bool(token.get_text().strip())))
@@ -539,7 +551,8 @@ class Window(Adw.ApplicationWindow):
                 return
             target, secret, with_token = host(), token.get_text(), methods.get_selected() == 1
             if is_forge():
-                run_async(lambda: forge.add_account(target, secret), on_token_done)
+                kind = forge_kind()
+                run_async(lambda: forge.add_account(target, secret, kind), on_token_done)
                 return
 
             def checked(_result, error):
@@ -553,14 +566,14 @@ class Window(Adw.ApplicationWindow):
             run_async(lambda: core.check_github_server(target), checked)
 
         def open_token_page(*_args):
-            page = forge.token_page(host()) if is_forge() else core.token_page(host())
+            page = forge.token_page(host(), forge_kind()) if is_forge() else core.token_page(host())
             Gio.AppInfo.launch_default_for_uri(page, None)
 
         create.connect("clicked", open_token_page)
         for row, signal in ((places, "notify::selected"), (methods, "notify::selected"), (server, "changed"), (token, "changed")):
             row.connect(signal, update)
         if forge_host:
-            places.set_selected(2)
+            places.set_selected(3 if forge.host_kind(forge_host) == forge.GITLAB else 2)
         update()
         dialog.connect("response", on_response)
         dialog.present()

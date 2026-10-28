@@ -1,4 +1,4 @@
-"""Forgejo and Gitea accounts.
+"""Forgejo, Gitea and GitLab accounts.
 
 gh cannot manage these, so Git-Switch keeps them itself and follows gh's
 model: tokens live only in the system keyring, a small file lists the accounts
@@ -22,7 +22,15 @@ from pathlib import Path
 from . import core
 from .i18n import _
 
-KIND = "forgejo"
+FORGEJO, GITLAB = "forgejo", "gitlab"
+KIND = FORGEJO
+KINDS = (FORGEJO, GITLAB)
+
+# What differs between the server families: API root, how a token is presented, and the user fields.
+_API_ROOT = {FORGEJO: "/api/v1", GITLAB: "/api/v4"}
+_AUTH_SCHEME = {FORGEJO: "token", GITLAB: "Bearer"}
+_LOGIN_FIELD = {FORGEJO: "login", GITLAB: "username"}
+_NAME_FIELD = {FORGEJO: "full_name", GITLAB: "name"}
 
 
 # --- account list (no secrets) ----------------------------------------------
@@ -34,7 +42,7 @@ def accounts_file() -> Path:
 
 
 def _load() -> dict[str, dict]:
-    """Return ``{host: {"users": [...], "active": name}}``."""
+    """Return ``{host: {"users": [...], "active": name, "kind": FORGEJO | GITLAB}}``."""
     try:
         stored = json.loads(accounts_file().read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -43,7 +51,8 @@ def _load() -> dict[str, dict]:
     for host, entry in stored.items() if isinstance(stored, dict) else ():
         users = entry.get("users") if isinstance(entry, dict) else None
         if isinstance(users, list) and users:
-            hosts[host] = {"users": [str(user) for user in users], "active": str(entry.get("active") or "")}
+            kind = entry.get("kind") if entry.get("kind") in KINDS else FORGEJO
+            hosts[host] = {"users": [str(user) for user in users], "active": str(entry.get("active") or ""), "kind": kind}
     return hosts
 
 
@@ -58,7 +67,7 @@ def _save(hosts: dict[str, dict]) -> None:
 
 def list_accounts() -> list[core.Account]:
     return [
-        core.Account(host, user, user == entry["active"], KIND)
+        core.Account(host, user, user == entry["active"], entry["kind"])
         for host, entry in _load().items()
         for user in entry["users"]
     ]
@@ -115,25 +124,32 @@ def clear_token(host: str, user: str) -> None:
 # --- server API -------------------------------------------------------------
 
 
-def token_page(host: str) -> str:
+def host_kind(host: str) -> str:
+    """Kind of a known host; Forgejo for hosts without accounts."""
+    return _load().get(host, {}).get("kind", FORGEJO)
+
+
+def token_page(host: str, kind: str = FORGEJO) -> str:
+    if kind == GITLAB:
+        return f"https://{host}/-/user_settings/personal_access_tokens?name=Git-Switch&scopes=read_user,write_repository"
     return f"https://{host}/user/settings/applications"
 
 
-def _profile(host: str, user: str, token: str) -> core.Profile:
+def _profile(host: str, user: str, token: str, kind: str = FORGEJO) -> core.Profile:
     if not token:
         return core.Profile(valid=False, login=user)
     try:
-        data, _headers = core.api_get(f"https://{host}/api/v1/user", f"token {token}")
+        data, _headers = core.api_get(f"https://{host}{_API_ROOT[kind]}/user", f"{_AUTH_SCHEME[kind]} {token}")
     except urllib.error.HTTPError as error:
         return core.Profile(valid=False if error.code in (401, 403) else None, login=user)
     except (OSError, ValueError):
         return core.Profile(valid=None, login=user)
-    if not isinstance(data, dict) or not data.get("login"):
+    if not isinstance(data, dict) or not data.get(_LOGIN_FIELD[kind]):
         return core.Profile(valid=None, login=user)
     return core.Profile(
         valid=True,
-        login=data["login"],
-        name=data.get("full_name") or "",
+        login=data[_LOGIN_FIELD[kind]],
+        name=data.get(_NAME_FIELD[kind]) or "",
         user_id=data.get("id") or 0,
         avatar_url=data.get("avatar_url") or "",
     )
@@ -144,23 +160,27 @@ def fetch_profile(account: core.Account) -> core.Profile:
         token = lookup_token(account.host, account.user)
     except core.GhError:
         return core.Profile(valid=None, login=account.user)
-    return _profile(account.host, account.user, token)
+    return _profile(account.host, account.user, token, account.kind)
 
 
 # --- API access for tools ---------------------------------------------------
 
 API_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 # Endpoints that hand out new credentials stay closed, so no secret can end up in a tool result.
-_CREDENTIAL_PATH = re.compile(r"/(tokens|oauth2)(/|\?|$)")
+_CREDENTIAL_PATH = re.compile(
+    r"/(tokens|oauth2|personal_access_tokens|access_tokens|impersonation_tokens|deploy_tokens|runners)(/|\?|$)"
+)
 _REPOSITORY = re.compile(r"[\w.-]+/[\w.-]+")
 
 
-def _api_account(host: str | None) -> core.Account:
-    active = [account for account in list_accounts() if account.active and host in (None, "", account.host)]
+def _api_account(host: str | None, kind: str = FORGEJO) -> core.Account:
+    active = [a for a in list_accounts() if a.active and a.kind == kind and host in (None, "", a.host)]
     if not active:
+        if kind == GITLAB:
+            raise core.GhError(_("No GitLab account is signed in for this host."))
         raise core.GhError(_("No Forgejo or Gitea account is signed in for this host."))
     if len(active) > 1:
-        raise core.GhError(_("Several Forgejo or Gitea hosts are known; pass a hostname."))
+        raise core.GhError(_("Several servers of this kind are known; pass a hostname."))
     return active[0]
 
 
@@ -169,8 +189,8 @@ def _api_call(account: core.Account, method: str, path: str, data: bytes | None,
     if not token:
         raise core.GhError(_("No token for {user} in the system keyring; sign in again.").format(user=account.user))
     try:
-        url = f"https://{account.host}/api/v1{path}"
-        return core.api_request(url, f"token {token}", method, data, content_type, timeout)[0]
+        url = f"https://{account.host}{_API_ROOT[account.kind]}{path}"
+        return core.api_request(url, f"{_AUTH_SCHEME[account.kind]} {token}", method, data, content_type, timeout)[0]
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", "replace")[:500].strip()
         raise core.GhError(f"HTTP {error.code} {error.reason}: {detail}".rstrip(": ")) from None
@@ -178,18 +198,18 @@ def _api_call(account: core.Account, method: str, path: str, data: bytes | None,
         raise core.GhError(_("Request to {host} failed: {detail}").format(host=account.host, detail=error)) from None
 
 
-def api(method: str, path: str, body: object = None, host: str | None = None) -> object:
-    """Call the API of the active account's server; ``path`` is relative to ``/api/v1``."""
+def api(method: str, path: str, body: object = None, host: str | None = None, kind: str = FORGEJO) -> object:
+    """Call the API of the active account's server; ``path`` is relative to the API root (``/api/v1``, ``/api/v4``)."""
     method = method.upper()
     if method not in API_METHODS:
         raise core.GhError(_("Unsupported method: {method}").format(method=method))
     segments = path.split("?", 1)[0].split("/")
     if not path.startswith("/") or path.startswith("//") or ".." in segments or any(c.isspace() for c in path):
-        raise core.GhError(_("The path must start with a single / and stay below /api/v1."))
+        raise core.GhError(_("The path must start with a single / and stay below the API root."))
     if _CREDENTIAL_PATH.search(path):
         raise core.GhError(_("Endpoints that create or list credentials are not available here."))
     data = None if body is None else json.dumps(body).encode()
-    return _api_call(_api_account(host), method, path, data, "application/json", 60)
+    return _api_call(_api_account(host, kind), method, path, data, "application/json", 60)
 
 
 def upload_release_asset(repository: str, tag: str, file: str, host: str | None = None) -> object:
@@ -214,23 +234,28 @@ def upload_release_asset(repository: str, tag: str, file: str, host: str | None 
 # --- actions ----------------------------------------------------------------
 
 
-def add_account(host: str, token: str) -> core.Account:
+def add_account(host: str, token: str, kind: str = FORGEJO) -> core.Account:
     """Validate ``token`` against ``host``, file it in the keyring and activate the account."""
     host, token = core.normalize_host(host), token.strip()
-    profile = _profile(host, "", token)
+    known = _load().get(host)
+    if known and known["kind"] != kind:
+        raise core.GhError(_("{host} is already set up as a different kind of server.").format(host=host))
+    profile = _profile(host, "", token, kind)
     if profile.valid is False:
         raise core.GhError(_("{host} rejected the token.").format(host=host))
     if not profile.valid:
+        if kind == GITLAB:
+            raise core.GhError(_("{host} did not answer like a GitLab server over HTTPS.").format(host=host))
         raise core.GhError(_("{host} did not answer like a Forgejo or Gitea server over HTTPS.").format(host=host))
     store_token(host, profile.login, token)
     hosts = _load()
-    entry = hosts.setdefault(host, {"users": [], "active": ""})
+    entry = hosts.setdefault(host, {"users": [], "active": "", "kind": kind})
     if profile.login not in entry["users"]:
         entry["users"].append(profile.login)
     entry["active"] = profile.login
     _save(hosts)
     setup_git(host)
-    return core.Account(host, profile.login, True, KIND)
+    return core.Account(host, profile.login, True, kind)
 
 
 def switch(account: core.Account) -> None:

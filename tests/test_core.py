@@ -8,6 +8,9 @@ from unittest import mock
 
 from gitswitch import core, forge, leaks, mcp, update
 
+# Kept before any test replaces it with a fake.
+REAL_GATHER = leaks.gather
+
 HOSTS = """\
 github.com:
     git_protocol: https
@@ -82,19 +85,36 @@ class HostsFileTest(unittest.TestCase):
         self.assertEqual(core.normalize_host("github.com"), "github.com")
         self.assertEqual(core.normalize_host("  "), "")
 
-    def test_check_github_server(self):
-        def reachable(*paths):
-            return mock.patch.object(core, "_reachable", side_effect=lambda url: url.endswith(paths))
+    def test_server_family(self):
+        answers = {
+            "/api/v3/meta": (200, {"installed_version": "3.12"}),
+            "/api/v1/version": (200, {"version": "11.0"}),
+            "/api/v4/version": (401, {"message": "401 Unauthorized"}),
+            "signin-forgejo": (403, {"message": "Only signed in user is allowed to call APIs."}),
+        }
 
-        with mock.patch.object(core, "_reachable") as probe:
-            core.check_github_server("github.com")
+        def serving(*paths, using=None):
+            def probe(url):
+                for path in paths:
+                    if url.endswith(path):
+                        return answers[using or path]
+                return 404, None
+            return mock.patch.object(core, "_probe", side_effect=probe)
+
+        with mock.patch.object(core, "_probe") as probe:
+            self.assertEqual(core.server_family("github.com"), "github")
+            self.assertEqual(core.server_family("gitlab.com"), "gitlab")
         probe.assert_not_called()
-        with reachable("/api/v3/meta"):
-            core.check_github_server("ghe.example.com")
-        with reachable("/api/v1/version"), self.assertRaises(core.GhError):
-            core.check_github_server("forgejo.example.com")
-        with reachable("/nothing"):
-            core.check_github_server("unknown.example.com")
+        for path, family in (("/api/v3/meta", "github"), ("/api/v1/version", "forgejo"), ("/api/v4/version", "gitlab")):
+            with serving(path):
+                self.assertEqual(core.server_family("git.example.com"), family)
+        with serving("/api/v1/version", using="signin-forgejo"):
+            self.assertEqual(core.server_family("git.example.com"), "forgejo")
+        with serving():
+            self.assertEqual(core.server_family("git.example.com"), "")
+            core.check_github_server("git.example.com")
+        with serving("/api/v4/version"), self.assertRaises(core.GhError):
+            core.check_github_server("git.example.com")
 
     def test_login_with_token_passes_token_on_stdin(self):
         with mock.patch.object(core.subprocess, "run") as run:
@@ -213,12 +233,71 @@ class ForgeTest(unittest.TestCase):
             mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": call})
             call = {"name": "forgejo_api_write", "arguments": {"method": "GET", "path": "/user"}}
             result = mcp.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": call})["result"]
-        api.assert_called_once_with("GET", "/user/repos", None, None)
+        api.assert_called_once_with("GET", "/user/repos", None, None, forge.FORGEJO)
         self.assertTrue(result["isError"])
 
     def test_noreply_address(self):
         profile = core.Profile(valid=True, login="dana", user_id=7)
         self.assertEqual(core.noreply_email("git.example.com:3000", profile, forge.KIND), "dana@noreply.git.example.com")
+
+
+class GitLabTest(unittest.TestCase):
+    """GitLab accounts share the Forgejo machinery but differ in API root, auth header and fields."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.keyring = {}
+        user = {"username": "dana", "name": "Dana", "id": 42, "avatar_url": "https://a/x.png"}
+        self.api_get = mock.Mock(return_value=(user, {}))
+        patches = [
+            mock.patch.dict(os.environ, {"GH_CONFIG_DIR": self.dir.name, "XDG_CONFIG_HOME": self.dir.name}),
+            mock.patch.object(forge, "store_token", lambda host, user, token: self.keyring.__setitem__((host, user), token)),
+            mock.patch.object(forge, "lookup_token", lambda host, user: self.keyring.get((host, user), "")),
+            mock.patch.object(forge, "clear_token", lambda host, user: self.keyring.pop((host, user), None)),
+            mock.patch.object(core, "api_get", self.api_get),
+            mock.patch.object(core, "_run"),
+            mock.patch.object(leaks, "gather", return_value=leaks.Context()),
+        ]
+        for patcher in patches:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.account = forge.add_account("gitlab.com", "glpat-secret", forge.GITLAB)
+
+    def test_profile_comes_from_api_v4_with_a_bearer_token(self):
+        self.assertEqual(self.account, core.Account("gitlab.com", "dana", True, forge.GITLAB))
+        self.api_get.assert_called_once_with("https://gitlab.com/api/v4/user", "Bearer glpat-secret")
+        self.assertEqual(forge.fetch_profile(self.account).name, "Dana")
+        self.assertEqual(json.loads(forge.accounts_file().read_text())["gitlab.com"]["kind"], forge.GITLAB)
+
+    def test_noreply_address(self):
+        profile = core.Profile(valid=True, login="dana", user_id=42)
+        self.assertEqual(core.noreply_email("gitlab.com", profile, forge.GITLAB), "42-dana@users.noreply.gitlab.com")
+
+    def test_credential_helper_and_kinds_stay_apart(self):
+        request = "protocol=https\nhost=gitlab.com\n"
+        self.assertEqual(forge.credential_helper("get", request), "username=dana\npassword=glpat-secret\n")
+        with self.assertRaises(core.GhError):
+            forge.add_account("gitlab.com", "x", forge.FORGEJO)
+        with self.assertRaises(core.GhError):
+            forge.api("GET", "/user")  # no Forgejo account
+        with self.assertRaises(core.GhError):
+            forge.api("POST", "/user/personal_access_tokens", kind=forge.GITLAB)
+
+    def test_api_uses_gitlab_root(self):
+        with mock.patch.object(core, "api_request", return_value=([], {})) as request:
+            call = {"name": "gitlab_api_get", "arguments": {"path": "/projects?membership=true"}}
+            mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": call})
+        url, authorization = request.call_args.args[:2]
+        self.assertEqual((url, authorization), ("https://gitlab.com/api/v4/projects?membership=true", "Bearer glpat-secret"))
+
+    def test_public_gitlab_is_not_a_private_server(self):
+        accounts = [self.account, core.Account("gitlab.example.com", "dana", True, forge.GITLAB)]
+        with mock.patch.object(core, "list_accounts", return_value=accounts), \
+                mock.patch.object(core, "get_git_identity", return_value=("", "")):
+            context = REAL_GATHER()
+        self.assertEqual(context.hosts, {"gitlab.example.com"})
+        self.assertIn("glpat-secret", context.tokens)
 
 
 class ApiTest(unittest.TestCase):
@@ -411,6 +490,8 @@ class McpTest(unittest.TestCase):
                 "forgejo_api_get",
                 "forgejo_api_write",
                 "forgejo_upload_release_asset",
+                "gitlab_api_get",
+                "gitlab_api_write",
                 "check_for_leaks",
             ],
         )

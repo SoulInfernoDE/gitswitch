@@ -21,7 +21,7 @@ TOOLS = [
         "name": "list_github_accounts",
         "description": _(
             "List the accounts Git-Switch manages, per host: the GitHub accounts the GitHub CLI (gh) is "
-            "logged in to and Forgejo or Gitea accounts, including which one is active and whether its "
+            "logged in to and Forgejo, Gitea or GitLab accounts, including which one is active and whether its "
             "token is still valid. Tokens are never returned."
         ),
         "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
@@ -31,7 +31,7 @@ TOOLS = [
         "name": "switch_github_account",
         "description": _(
             "Switch the active account of a host: gh auth switch for GitHub, or the account git uses "
-            "for a Forgejo or Gitea host. This applies to the whole machine, not just this session. "
+            "for a Forgejo, Gitea or GitLab host. This applies to the whole machine, not just this session. "
             "If the user enabled it in Git-Switch, the global git user.name/user.email follow."
         ),
         "inputSchema": {
@@ -105,6 +105,48 @@ TOOLS = [
             "additionalProperties": False,
         },
         "annotations": {"readOnlyHint": False},
+    },
+    {
+        "name": "gitlab_api_get",
+        "description": _(
+            "Read from the REST API of a GitLab server as the active account, like 'gh api' for GitHub. The path "
+            "is relative to /api/v4, for example /user, /projects?membership=true, "
+            "/projects/OWNER%2FNAME/issues?state=opened, /projects/OWNER%2FNAME/merge_requests, "
+            "/projects/OWNER%2FNAME/pipelines or /projects/OWNER%2FNAME/repository/files/PATH/raw?ref=main. "
+            "Projects can be addressed by ID or by their URL-encoded path. Lists are paged with ?page= and "
+            "?per_page=. The token is never returned."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": _("API path below /api/v4, starting with /")},
+                "hostname": {"type": "string", "description": _("Server, only needed if several are signed in")},
+            },
+            "required": ["path"],
+            "additionalProperties": False,
+        },
+        "annotations": {"readOnlyHint": True},
+    },
+    {
+        "name": "gitlab_api_write",
+        "description": _(
+            "Change something through the REST API of a GitLab server as the active account: create or edit "
+            "issues, notes, merge requests, releases and projects, merge a merge request "
+            "(PUT /projects/OWNER%2FNAME/merge_requests/IID/merge) or start a pipeline. The path is relative to "
+            "/api/v4. DELETE requests remove data permanently. Needs a token with the api scope."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "method": {"type": "string", "enum": ["POST", "PUT", "PATCH", "DELETE"]},
+                "path": {"type": "string", "description": _("API path below /api/v4, starting with /")},
+                "body": {"type": "object", "description": _("JSON body of the request")},
+                "hostname": {"type": "string", "description": _("Server, only needed if several are signed in")},
+            },
+            "required": ["method", "path"],
+            "additionalProperties": False,
+        },
+        "annotations": {"readOnlyHint": False, "destructiveHint": True},
     },
     {
         "name": "check_for_leaks",
@@ -209,7 +251,7 @@ def _call_tool(name: str, arguments: dict) -> object:
         if not isinstance(user, str) or not user:
             raise core.GhError(_("'user' is required"))
         return core.switch_account(user, arguments.get("hostname"))
-    if name in ("forgejo_api_get", "forgejo_api_write", "forgejo_upload_release_asset"):
+    if name in ("forgejo_api_get", "forgejo_api_write", "forgejo_upload_release_asset", "gitlab_api_get", "gitlab_api_write"):
         text = {key: value for key, value in arguments.items() if isinstance(value, str)}
         host = text.get("hostname")
         if name == "forgejo_upload_release_asset":
@@ -217,15 +259,16 @@ def _call_tool(name: str, arguments: dict) -> object:
                 raise core.GhError(_("Not sent: the file contains a secret."))
             _refuse_restricted(host, text.get("repository", ""), leaks.scan_paths([text.get("file", "")]))
             return forge.upload_release_asset(text.get("repository", ""), text.get("tag", ""), text.get("file", ""), host)
-        method = "GET" if name == "forgejo_api_get" else text.get("method", "").upper()
-        if name == "forgejo_api_write" and method not in ("POST", "PUT", "PATCH", "DELETE"):
+        kind = forge.GITLAB if name.startswith("gitlab_") else forge.FORGEJO
+        method = "GET" if name.endswith("_api_get") else text.get("method", "").upper()
+        if name.endswith("_api_write") and method not in ("POST", "PUT", "PATCH", "DELETE"):
             raise core.GhError(_("Unsupported method: {method}").format(method=method))
         _refuse_secrets(text.get("path"), arguments.get("body"))
         if name == "forgejo_api_write":
             target = re.match(r"/repos/([^/?]+/[^/?]+)", text.get("path", ""))
             body = json.dumps(arguments.get("body"), ensure_ascii=False) if arguments.get("body") is not None else ""
             _refuse_restricted(host, target.group(1) if target else "", leaks.scan_text(body, "request"))
-        return forge.api(method, text.get("path", ""), arguments.get("body"), host)
+        return forge.api(method, text.get("path", ""), arguments.get("body"), host, kind)
     raise core.GhError(_("Unknown tool: {name}").format(name=name))
 
 
