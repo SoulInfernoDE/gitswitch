@@ -705,7 +705,7 @@ msgstr ""
 msgid "{path} does not exist."
 msgstr ""
 
-#: gitswitch/leaks.py:247
+#: gitswitch/leaks.py:252
 #, python-brace-format
 msgid "{path} is not a git repository."
 msgstr ""
@@ -890,14 +890,19 @@ msgid "Unknown tool: {name}"
 msgstr ""
 
 #: gitswitch/mcp.py:310
+#, python-brace-format
+msgid "Internal error: {detail}"
+msgstr ""
+
+#: gitswitch/mcp.py:313
 msgid "[Result cut off; narrow the request or use ?limit= and ?page=.]"
 msgstr ""
 
-#: gitswitch/mcp.py:312
+#: gitswitch/mcp.py:315
 #, python-brace-format
 msgid "Method not found: {method}"
 msgstr ""
 
-#: gitswitch/mcp.py:324
+#: gitswitch/mcp.py:327
 msgid "Parse error"
 msgstr ""

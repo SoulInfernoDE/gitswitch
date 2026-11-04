@@ -730,7 +730,7 @@ msgstr "Eine Datei von deiner Sperrliste ({term})."
 msgid "{path} does not exist."
 msgstr "{path} existiert nicht."
 
-#: gitswitch/leaks.py:247
+#: gitswitch/leaks.py:252
 #, python-brace-format
 msgid "{path} is not a git repository."
 msgstr "{path} ist kein Git-Repository."
@@ -969,16 +969,21 @@ msgid "Unknown tool: {name}"
 msgstr "Unbekanntes Tool: {name}"
 
 #: gitswitch/mcp.py:310
+#, python-brace-format
+msgid "Internal error: {detail}"
+msgstr "Interner Fehler: {detail}"
+
+#: gitswitch/mcp.py:313
 msgid "[Result cut off; narrow the request or use ?limit= and ?page=.]"
 msgstr ""
 "[Ergebnis abgeschnitten; Anfrage eingrenzen oder ?limit= und ?page= "
 "verwenden.]"
 
-#: gitswitch/mcp.py:312
+#: gitswitch/mcp.py:315
 #, python-brace-format
 msgid "Method not found: {method}"
 msgstr "Methode nicht gefunden: {method}"
 
-#: gitswitch/mcp.py:324
+#: gitswitch/mcp.py:327
 msgid "Parse error"
 msgstr "Syntaxfehler"

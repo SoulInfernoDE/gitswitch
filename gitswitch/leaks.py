@@ -212,7 +212,12 @@ def scan_paths(paths: list[str], context: Context | None = None) -> list[Finding
 
 
 def _git(repository: str, *args: str) -> subprocess.CompletedProcess:
-    return core._run(["git", "-C", repository, *args], check=False)
+    # Files are not always UTF-8 (a Windows-1252 text in a diff, say); a stray byte must not stop the check.
+    try:
+        return subprocess.run(["git", "-C", repository, *args], capture_output=True, text=True, errors="replace",
+                              stdin=subprocess.DEVNULL, timeout=60)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise core.GhError(str(error)) from None
 
 
 def _scan_diff(diff: str, context: Context) -> list[Finding]:
