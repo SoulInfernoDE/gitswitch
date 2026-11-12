@@ -403,7 +403,7 @@ class ExpiryTest(unittest.TestCase):
 
     def test_describe(self):
         days = timedelta(days=1)
-        self.assertEqual(self.describe(expiry.NEVER), ("No expiry date", "ok"))
+        self.assertEqual(self.describe(expiry.NEVER), ("Does not expire", "ok"))
         self.assertIsNone(self.describe(None))
         self.assertEqual(self.describe(self.NOW + 30 * days), ("Valid until 2026-12-12", "ok"))
         self.assertEqual(self.describe(self.NOW + 15 * days), ("Valid until 2026-11-27", "ok"))

@@ -5,6 +5,7 @@ from __future__ import annotations
 import shlex
 import sys
 import threading
+from datetime import datetime
 from pathlib import Path
 
 import gi
@@ -516,18 +517,33 @@ class Window(Adw.ApplicationWindow):
             child=rows, min_content_height=380, min_content_width=360, hscrollbar_policy=Gtk.PolicyType.NEVER
         )
 
+        body = _("Choose what this token may do. You confirm the change in the browser.")
+        expiring = profile is not None and isinstance(profile.expires, datetime)
+        if expiring:
+            # gh auth refresh always signs in anew and stores an OAuth token, which has no expiry date.
+            note = _(
+                "This account uses an access token that expires on {date}. Continuing signs in again in the "
+                "browser and replaces it with a token from gh that does not expire. To keep your token, change "
+                "its permissions on GitHub instead."
+            ).format(date=local_date(profile.expires))
+            body = f"{body}\n\n{note}"
         dialog = Adw.MessageDialog(
             transient_for=self,
             heading=_("Change permissions"),
-            body=_("Choose what this token may do. You confirm the change in the browser."),
+            body=body,
             extra_child=scrolled,
         )
         dialog.add_response("cancel", _("Cancel"))
+        if expiring:
+            dialog.add_response("github", _("Edit token on GitHub"))
         dialog.add_response("refresh", _("Continue"))
         dialog.set_response_appearance("refresh", Adw.ResponseAppearance.SUGGESTED)
         dialog.set_default_response("refresh")
 
         def on_response(_dialog, response):
+            if response == "github":
+                Gio.AppInfo.launch_default_for_uri(f"https://{host}/settings/tokens", None)
+                return
             if response != "refresh":
                 return
             selected = {scope for scope, check in checks.items() if check.get_active()}

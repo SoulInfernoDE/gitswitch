@@ -96,7 +96,7 @@ def describe(expires: datetime | str | None, format_date, now: datetime | None =
     ``format_date`` turns the aware datetime into a date in the user's locale.
     """
     if expires == NEVER:
-        return _("No expiry date"), "ok"
+        return _("Does not expire"), "ok"
     if not isinstance(expires, datetime):
         return None
     if is_expired(expires, now):
