@@ -295,6 +295,24 @@ def add_account(host: str, token: str, kind: str = FORGEJO) -> core.Account:
     return core.Account(host, profile.login, True, kind)
 
 
+def replace_token(account: core.Account, token: str) -> core.Profile:
+    """Put a new token in place of the stored one; it must belong to the same account."""
+    profile = _profile(account.host, account.user, token.strip(), account.kind)
+    if profile.valid is False:
+        raise core.GhError(_("{host} rejected the token.").format(host=account.host))
+    if not profile.valid:
+        raise core.GhError(_("{host} could not be reached to check the token.").format(host=account.host))
+    if profile.login.lower() != account.user.lower():
+        raise core.GhError(
+            _("The token belongs to {login}, not to {user}; nothing was changed.").format(
+                login=profile.login, user=account.user
+            )
+        )
+    store_token(account.host, account.user, token.strip())
+    expiry.remember(account.host, account.user, profile.expires)
+    return profile
+
+
 def switch(account: core.Account) -> None:
     hosts = _load()
     hosts[account.host]["active"] = account.user

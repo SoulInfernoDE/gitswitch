@@ -84,6 +84,7 @@ class Window(Adw.ApplicationWindow):
             ("logout", self.on_logout_action, "(ss)"),
             ("profile", self.on_profile_action, "(ss)"),
             ("copy-token", self.on_copy_token_action, "(ss)"),
+            ("replace-token", self.on_replace_token_action, "(ss)"),
             ("scopes", self.on_scopes_action, "s"),
         ):
             action = Gio.SimpleAction.new(name, GLib.VariantType.new(parameter))
@@ -283,6 +284,7 @@ class Window(Adw.ApplicationWindow):
         items = [
             (_("Open profile"), "win.profile", target),
             (_("Copy token"), "win.copy-token", target),
+            (_("Replace token…"), "win.replace-token", target),
             (_("Sign in again"), "win.login", GLib.Variant("s", account.host)),
             (_("Sign out"), "win.logout", target),
         ]
@@ -290,6 +292,7 @@ class Window(Adw.ApplicationWindow):
             # Tokens of these accounts never leave the keyring, and their scopes are fixed when created.
             items = [
                 (_("Open profile"), "win.profile", target),
+                (_("Replace token…"), "win.replace-token", target),
                 (_("Sign in again"), "win.add-forge", GLib.Variant("s", account.host)),
                 (_("Sign out"), "win.logout", target),
             ]
@@ -430,6 +433,61 @@ class Window(Adw.ApplicationWindow):
                 self.copy(token)
 
         run_async(lambda: core.get_token(core.Account(host, user, False)), done)
+
+    def on_replace_token_action(self, _action, parameter) -> None:
+        host, user = parameter.unpack()
+        account = next((a for a in core.list_accounts() if (a.host, a.user) == (host, user)), None)
+        if account is None:
+            return
+        token = Adw.PasswordEntryRow(title=_("New token"), activates_default=True)
+        create = Gtk.Button(
+            icon_name="web-browser-symbolic", valign=Gtk.Align.CENTER, tooltip_text=_("Create a token on the server")
+        )
+        create.add_css_class("flat")
+        token.add_suffix(create)
+        rows = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        rows.add_css_class("boxed-list")
+        rows.set_size_request(420, -1)
+        rows.append(token)
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading=_("Replace token"),
+            body=_(
+                "Paste a new token for {user} on {host}. It is checked against the server and must belong to "
+                "this account; only then is the stored token replaced. The button next to the field opens the "
+                "page to create one."
+            ).format(user=user, host=host),
+            extra_child=rows,
+        )
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("replace", _("Replace"))
+        dialog.set_response_appearance("replace", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("replace")
+        dialog.set_response_enabled("replace", False)
+        token.connect("changed", lambda *_args: dialog.set_response_enabled("replace", bool(token.get_text().strip())))
+
+        def open_token_page(*_args):
+            if account.kind == "github":
+                page = core.token_page(host)
+            else:
+                page = forge.token_page(host, account.kind)
+            Gio.AppInfo.launch_default_for_uri(page, None)
+
+        def done(_result, error):
+            if error:
+                self.explain(_("Token not replaced"), str(error))
+            else:
+                self.toast(_("Token of {user} replaced").format(user=user), "success")
+            self.reload(recheck=True)
+
+        def on_response(_dialog, response):
+            if response == "replace":
+                secret = token.get_text()
+                run_async(lambda: core.replace_token(account, secret), done)
+
+        create.connect("clicked", open_token_page)
+        dialog.connect("response", on_response)
+        dialog.present()
 
     def on_scopes_action(self, _action, parameter) -> None:
         host = parameter.unpack()

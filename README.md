@@ -29,6 +29,8 @@ through the bundled MCP server.
 - Forgejo, Gitea and GitLab accounts with the same safeguards gh applies to
   GitHub tokens (see below)
 - Sign out of single accounts
+- Replace the token of an account, for example before it expires; the new
+  token is checked against the server and must belong to the same account
 - Shows the permissions (scopes) of each token; add or remove them by ticking
   boxes in a list with descriptions (`gh auth refresh`)
 - Shows how long each token stays valid, with a warning shortly before it
@@ -59,14 +61,14 @@ Forgejo, Gitea and GitLab accounts additionally need libsecret and a running key
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.7.0_all.deb
+sudo apt install ./gitswitch_0.7.1_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.7.0-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.7.1-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.

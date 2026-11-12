@@ -501,6 +501,47 @@ class ExpiryTest(unittest.TestCase):
         self.assertEqual(json.loads(result["content"][0]["text"])["notices"], notices)
 
 
+class ReplaceTokenTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        patcher = mock.patch.dict(os.environ, {"GH_CONFIG_DIR": self.dir.name, "XDG_CONFIG_HOME": self.dir.name,
+                                               "XDG_CACHE_HOME": self.dir.name})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_forge_token_is_replaced_only_for_the_same_account(self):
+        account = core.Account("git.example.com", "dana", True, forge.FORGEJO)
+        keyring = {}
+        with mock.patch.object(forge, "store_token", lambda h, u, t: keyring.__setitem__((h, u), t)):
+            with mock.patch.object(forge, "_profile", return_value=core.Profile(valid=True, login="Dana")):
+                core.replace_token(account, " new-token ")
+            self.assertEqual(keyring, {("git.example.com", "dana"): "new-token"})
+            for profile in (core.Profile(valid=True, login="erin"), core.Profile(valid=False), core.Profile(valid=None)):
+                with mock.patch.object(forge, "_profile", return_value=profile), self.assertRaises(core.GhError):
+                    core.replace_token(account, "other")
+        self.assertEqual(keyring, {("git.example.com", "dana"): "new-token"})
+
+    def test_github_token_goes_to_gh_and_the_active_account_stays(self):
+        account = core.Account("github.com", "bob", False)
+        others = [core.Account("github.com", "alice", True), account]
+        with mock.patch.object(core, "api_get", return_value=({"login": "bob"}, {})), \
+                mock.patch.object(core, "list_accounts", return_value=others), \
+                mock.patch.object(core, "_run") as run:
+            core.replace_token(account, "ghp_new")
+        calls = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(calls[0], ["gh", "auth", "login", "--hostname", "github.com", "--with-token"])
+        self.assertEqual(run.call_args_list[0].kwargs["stdin_text"], "ghp_new\n")
+        self.assertEqual(calls[1], ["gh", "auth", "switch", "--hostname", "github.com", "--user", "alice"])
+
+    def test_github_token_of_another_account_is_refused(self):
+        account = core.Account("github.com", "bob", True)
+        with mock.patch.object(core, "api_get", return_value=({"login": "mallory"}, {})), \
+                mock.patch.object(core, "_run") as run, self.assertRaises(core.GhError):
+            core.replace_token(account, "ghp_other")
+        run.assert_not_called()
+
+
 class ApiTest(unittest.TestCase):
     def test_tokens_are_not_sent_over_plain_http(self):
         with self.assertRaises(ValueError):

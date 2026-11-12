@@ -438,6 +438,39 @@ def login_with_token(host: str, token: str) -> None:
     _run(["gh", "auth", "login", "--hostname", host, "--with-token"], stdin_text=token.strip() + "\n")
 
 
+def replace_token(account: Account, token: str) -> None:
+    """Swap the stored token of ``account`` for ``token`` after checking it belongs to that account.
+
+    The account that was active on the host stays active.
+    """
+    if account.kind != "github":
+        from . import forge
+
+        forge.replace_token(account, token)
+        return
+    token = token.strip()
+    try:
+        data, _headers = api_get(_api_url(account.host), f"Bearer {token}")
+    except urllib.error.HTTPError as error:
+        if error.code == 401:
+            raise GhError(_("{host} rejected the token.").format(host=account.host)) from None
+        raise GhError(_("{host} could not be reached to check the token.").format(host=account.host)) from None
+    except (OSError, ValueError):
+        raise GhError(_("{host} could not be reached to check the token.").format(host=account.host)) from None
+    login = data.get("login", "") if isinstance(data, dict) else ""
+    if login.lower() != account.user.lower():
+        raise GhError(
+            _("The token belongs to {login}, not to {user}; nothing was changed.").format(
+                login=login or "?", user=account.user
+            )
+        )
+    active = next((a.user for a in list_accounts() if a.host == account.host and a.active and a.kind == "github"), "")
+    # gh stores a token by the account it belongs to, and makes that account active.
+    login_with_token(account.host, token)
+    if active and active != account.user:
+        _run(["gh", "auth", "switch", "--hostname", account.host, "--user", active])
+
+
 def logout_account(account: Account) -> None:
     if account.kind != "github":
         from . import forge
