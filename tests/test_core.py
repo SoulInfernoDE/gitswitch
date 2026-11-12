@@ -542,6 +542,35 @@ class ReplaceTokenTest(unittest.TestCase):
         run.assert_not_called()
 
 
+class TokenTypeTest(unittest.TestCase):
+    def test_types_follow_the_documented_prefixes(self):
+        cases = [
+            ("gho_abc", "github", "oauth"),
+            ("ghp_abc", "github", "classic"),
+            ("github_pat_abc", "github", "fine-grained"),
+            ("ghu_abc", "github", "app-user"),
+            ("something", "github", ""),
+            ("glpat-abc", "gitlab", "personal"),
+            ("abc", "gitlab", ""),
+            ("0123abcd", "forgejo", "access-token"),
+        ]
+        for token, kind, expected in cases:
+            self.assertEqual(core.token_type(token, kind), expected, token)
+            self.assertEqual(bool(core.token_type_label(expected)), bool(expected), token)
+
+    def test_github_profile_and_listing_carry_the_type(self):
+        account = core.Account("github.com", "dana", True)
+        with mock.patch.object(core, "_run", return_value=mock.Mock(returncode=0, stdout="gho_secret\n")), \
+                mock.patch.object(core, "api_get", return_value=({"login": "dana"}, {})), \
+                mock.patch.object(core.expiry, "remember"):
+            profile = core.fetch_profile(account)
+            with mock.patch.object(core, "list_accounts", return_value=[account]):
+                listed = core.describe_accounts()
+        self.assertEqual(profile.token_type, "oauth")
+        self.assertEqual(listed[0]["token_type"], "oauth")
+        self.assertNotIn("gho_secret", json.dumps(listed))
+
+
 class ApiTest(unittest.TestCase):
     def test_tokens_are_not_sent_over_plain_http(self):
         with self.assertRaises(ValueError):

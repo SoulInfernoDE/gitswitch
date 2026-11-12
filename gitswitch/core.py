@@ -56,6 +56,31 @@ class Profile:
     avatar_url: str = ""
     scopes: list[str] = field(default_factory=list)
     expires: datetime | str | None = None
+    # One of the keys of token_type_label(); empty if unknown.
+    token_type: str = ""
+
+
+def token_type(token: str, kind: str = "github") -> str:
+    """Classify a token by its documented prefix; the token itself is not kept."""
+    if kind == "github":
+        if token.startswith("github_pat_"):
+            return "fine-grained"
+        return {"gho_": "oauth", "ghp_": "classic", "ghu_": "app-user"}.get(token[:4], "")
+    if kind == "gitlab":
+        return "personal" if token.startswith("glpat-") else ""
+    return "access-token"
+
+
+def token_type_label(code: str) -> str:
+    labels = {
+        "oauth": _("OAuth token (sign-in through gh)"),
+        "classic": _("Classic access token"),
+        "fine-grained": _("Fine-grained access token"),
+        "app-user": _("GitHub App token"),
+        "personal": _("Personal access token"),
+        "access-token": _("Access token"),
+    }
+    return labels.get(code, "")
 
 
 # --- running commands -------------------------------------------------------
@@ -240,6 +265,7 @@ def _github_profile(account: Account) -> Profile:
         avatar_url=data.get("avatar_url") or "",
         scopes=[scope.strip() for scope in scopes.split(",") if scope.strip()],
         expires=expires,
+        token_type=token_type(token),
     )
 
 
@@ -508,6 +534,7 @@ def describe_accounts(check_tokens: bool = True) -> list[dict]:
                 expires=expiry.to_iso(profile.expires),
                 expires_in_days=expiry.days_left(profile.expires),
                 never_expires=profile.expires == expiry.NEVER,
+                token_type=profile.token_type,
             )
         described.append(entry)
     return described

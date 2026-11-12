@@ -375,8 +375,11 @@ class Window(Adw.ApplicationWindow):
         lines = [" · ".join(parts)] if parts else []
         if profile.scopes:
             lines.append(_("Permissions: {scopes}").format(scopes=", ".join(profile.scopes)))
-        if described:
-            lines.append(described[0])
+        token_line = [described[0]] if described else []
+        if core.token_type_label(profile.token_type):
+            token_line.append(core.token_type_label(profile.token_type))
+        if token_line:
+            lines.append(" · ".join(token_line))
         row.set_subtitle("\n".join(lines))
 
         url = profile.avatar_url
@@ -518,14 +521,21 @@ class Window(Adw.ApplicationWindow):
         )
 
         body = _("Choose what this token may do. You confirm the change in the browser.")
+        # gh auth refresh always signs in anew and stores an OAuth token, which has no expiry date.
         expiring = profile is not None and isinstance(profile.expires, datetime)
+        replaced = expiring or (profile is not None and profile.token_type in ("classic", "fine-grained", "app-user"))
         if expiring:
-            # gh auth refresh always signs in anew and stores an OAuth token, which has no expiry date.
             note = _(
                 "This account uses an access token that expires on {date}. Continuing signs in again in the "
                 "browser and replaces it with a token from gh that does not expire. To keep your token, change "
                 "its permissions on GitHub instead."
             ).format(date=local_date(profile.expires))
+            body = f"{body}\n\n{note}"
+        elif replaced:
+            note = _(
+                "This account uses this kind of token: {type}. Continuing signs in again in the browser and replaces "
+                "it with an OAuth token from gh. To keep your token, change its permissions on GitHub instead."
+            ).format(type=core.token_type_label(profile.token_type))
             body = f"{body}\n\n{note}"
         dialog = Adw.MessageDialog(
             transient_for=self,
@@ -534,7 +544,7 @@ class Window(Adw.ApplicationWindow):
             extra_child=scrolled,
         )
         dialog.add_response("cancel", _("Cancel"))
-        if expiring:
+        if replaced:
             dialog.add_response("github", _("Edit token on GitHub"))
         dialog.add_response("refresh", _("Continue"))
         dialog.set_response_appearance("refresh", Adw.ResponseAppearance.SUGGESTED)

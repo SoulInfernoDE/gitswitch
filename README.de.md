@@ -29,6 +29,8 @@ heraus über den mitgelieferten MCP-Server.
 - Forgejo-, Gitea- und GitLab-Konten mit denselben Schutzmaßnahmen, die gh für
   GitHub-Tokens anwendet (siehe unten)
 - Einzelne Konten abmelden
+- Zeigt die Art jedes Tokens (OAuth-Token aus der Anmeldung über gh,
+  klassisches oder fein granulares Zugriffstoken, …) und wann es abläuft
 - Das Token eines Kontos ersetzen, etwa bevor es abläuft; das neue Token wird
   beim Server geprüft und muss zum selben Konto gehören
 - Zeigt die Berechtigungen (Scopes) jedes Tokens; hinzufügen oder entfernen per
@@ -62,14 +64,14 @@ Schlüsselbund (GNOME Keyring, KWallet o. Ä.).
 [Release-Seite](../../releases) herunterladen und installieren:
 
 ```bash
-sudo apt install ./gitswitch_0.7.2_all.deb
+sudo apt install ./gitswitch_0.7.3_all.deb
 ```
 
 **Andere Distributionen** – PyGObject, GTK 4 und libadwaita über den
 Paketmanager installieren, dann:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.7.2-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.7.3-py3-none-any.whl
 ```
 
 **Aus dem Quellcode** – `python3 -m gitswitch` in einem Checkout.

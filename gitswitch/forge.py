@@ -154,6 +154,7 @@ def _profile(host: str, user: str, token: str, kind: str = FORGEJO) -> core.Prof
         user_id=data.get("id") or 0,
         avatar_url=data.get("avatar_url") or "",
         expires=_token_expiry(host, token, kind),
+        token_type=core.token_type(token, kind),
     )
 
 
