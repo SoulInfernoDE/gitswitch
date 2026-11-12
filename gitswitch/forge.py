@@ -17,9 +17,10 @@ import sys
 import urllib.error
 import urllib.parse
 import uuid
+from datetime import datetime
 from pathlib import Path
 
-from . import core
+from . import core, expiry
 from .i18n import _
 
 FORGEJO, GITLAB = "forgejo", "gitlab"
@@ -152,7 +153,25 @@ def _profile(host: str, user: str, token: str, kind: str = FORGEJO) -> core.Prof
         name=data.get(_NAME_FIELD[kind]) or "",
         user_id=data.get("id") or 0,
         avatar_url=data.get("avatar_url") or "",
+        expires=_token_expiry(host, token, kind),
     )
+
+
+def _token_expiry(host: str, token: str, kind: str) -> datetime | str | None:
+    """When the token expires; None if the server does not tell.
+
+    Forgejo and Gitea access tokens have no expiry date, and their API reports none.
+    GitLab describes the token used for the request, unless it is no personal access token.
+    """
+    if kind != GITLAB:
+        return expiry.NEVER
+    try:
+        data, _headers = core.api_get(f"https://{host}/api/v4/personal_access_tokens/self", f"Bearer {token}")
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or "expires_at" not in data:
+        return None
+    return expiry.parse(data["expires_at"]) if data["expires_at"] else expiry.NEVER
 
 
 def fetch_profile(account: core.Account) -> core.Profile:
@@ -265,6 +284,7 @@ def add_account(host: str, token: str, kind: str = FORGEJO) -> core.Account:
             raise core.GhError(_("{host} did not answer like a GitLab server over HTTPS.").format(host=host))
         raise core.GhError(_("{host} did not answer like a Forgejo or Gitea server over HTTPS.").format(host=host))
     store_token(host, profile.login, token)
+    expiry.remember(host, profile.login, profile.expires)
     hosts = _load()
     entry = hosts.setdefault(host, {"users": [], "active": "", "kind": kind})
     if profile.login not in entry["users"]:

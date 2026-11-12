@@ -13,8 +13,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from . import __version__, core, forge, sound, update  # noqa: E402
-from .i18n import _  # noqa: E402
+from . import __version__, core, expiry, forge, sound, update  # noqa: E402
+from .i18n import _, ngettext  # noqa: E402
 
 APP_ID = ICON_NAME = "dev.gitswitch.GitSwitch"
 
@@ -32,6 +32,11 @@ def run_async(func, callback) -> None:
     threading.Thread(target=worker, daemon=True).start()
 
 
+def local_date(moment) -> str:
+    """Date of ``moment`` in the local time zone, in the format of the user's locale."""
+    return GLib.DateTime.new_from_unix_local(int(moment.timestamp())).format("%x")
+
+
 class Window(Adw.ApplicationWindow):
     def __init__(self, app: Adw.Application):
         super().__init__(application=app, title="Git-Switch", default_width=460, default_height=800)
@@ -42,6 +47,8 @@ class Window(Adw.ApplicationWindow):
         self.generation = 0
         self.reload_source = 0
         self.busy_toggle = False
+        # Accounts whose upcoming token expiry was already announced in a toast.
+        self.expiry_warned: set[core.Account] = set()
 
         header = Adw.HeaderBar()
         add_button = Gtk.Button(icon_name="list-add-symbolic", tooltip_text=_("Add account"))
@@ -257,6 +264,8 @@ class Window(Adw.ApplicationWindow):
         row = Adw.ActionRow(title=account.user, use_markup=False)
         avatar = Adw.Avatar(size=40, text=account.user, show_initials=True)
         row.add_prefix(avatar)
+        row.expiry_icon = Gtk.Image(visible=False, valign=Gtk.Align.CENTER)
+        row.add_suffix(row.expiry_icon)
 
         if account.active:
             check = Gtk.Image(icon_name="object-select-symbolic")
@@ -304,6 +313,7 @@ class Window(Adw.ApplicationWindow):
                 profile = core.Profile(valid=None, login=account.user)
             self.profiles[account] = profile
             self.show_profile(row, avatar, account, profile)
+            self.announce_expiry(account, profile)
 
         if account in self.profiles:
             show(self.profiles[account])
@@ -312,14 +322,48 @@ class Window(Adw.ApplicationWindow):
             run_async(lambda: core.fetch_profile(account), show)
         return row
 
+    def show_expiry(self, row, described: tuple[str, str] | None) -> None:
+        """Warning sign next to a token that expires soon or has expired."""
+        state = described[1] if described else "ok"
+        row.expiry_icon.set_visible(state != "ok")
+        if state == "ok":
+            return
+        row.expiry_icon.set_from_icon_name("dialog-warning-symbolic" if state == "warning" else "dialog-error-symbolic")
+        row.expiry_icon.set_css_classes(["warning" if state == "warning" else "error"])
+        row.expiry_icon.set_tooltip_text(described[0])
+
+    def announce_expiry(self, account: core.Account, profile: core.Profile) -> None:
+        """Toast once per account and window for a token that expires within a week."""
+        if not profile.valid or account in self.expiry_warned:
+            return
+        if not expiry.expires_soon(profile.expires, expiry.TOAST_DAYS):
+            return
+        self.expiry_warned.add(account)
+        days = expiry.days_left(profile.expires)
+        text = ngettext(
+            "The token of {user} on {host} expires in {days} day",
+            "The token of {user} on {host} expires in {days} days",
+            days,
+        )
+        self.toast(text.format(user=account.user, host=account.host, days=days))
+
     def show_profile(self, row, avatar, account: core.Account, profile: core.Profile) -> None:
+        described = expiry.describe(profile.expires, local_date)
+        self.show_expiry(row, described)
         if profile.valid is False:
-            row.set_subtitle(_("Token invalid – sign in again"))
+            if expiry.is_expired(profile.expires):
+                text = _("Token expired on {date} – sign in again").format(date=local_date(profile.expires))
+            else:
+                text = _("Token invalid – sign in again")
+                row.expiry_icon.set_visible(False)
+            row.set_subtitle(text)
             if not account.active:
                 row.button.set_label(_("Sign in again"))
             return
         if profile.valid is None:
-            row.set_subtitle(_("Token could not be checked"))
+            # The last expiry seen still helps while the server cannot be reached.
+            lines = [_("Token could not be checked")] + ([described[0]] if described else [])
+            row.set_subtitle("\n".join(lines))
             return
         parts = [profile.name] if profile.name else []
         if account.active:
@@ -327,6 +371,8 @@ class Window(Adw.ApplicationWindow):
         lines = [" · ".join(parts)] if parts else []
         if profile.scopes:
             lines.append(_("Permissions: {scopes}").format(scopes=", ".join(profile.scopes)))
+        if described:
+            lines.append(described[0])
         row.set_subtitle("\n".join(lines))
 
         url = profile.avatar_url

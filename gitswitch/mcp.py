@@ -11,8 +11,8 @@ import re
 import sys
 import threading
 
-from . import __version__, core, forge, leaks, update
-from .i18n import _
+from . import __version__, core, expiry, forge, leaks, update
+from .i18n import _, ngettext
 
 PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
 
@@ -21,8 +21,9 @@ TOOLS = [
         "name": "list_github_accounts",
         "description": _(
             "List the accounts Git-Switch manages, per host: the GitHub accounts the GitHub CLI (gh) is "
-            "logged in to and Forgejo, Gitea or GitLab accounts, including which one is active and whether its "
-            "token is still valid. Tokens are never returned."
+            "logged in to and Forgejo, Gitea or GitLab accounts, including which one is active, whether its "
+            "token is still valid and when it expires: 'expires' in UTC and 'expires_in_days', both null without "
+            "a known date; 'never_expires' is true for a token without expiry date. Tokens are never returned."
         ),
         "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
         "annotations": {"readOnlyHint": True},
@@ -213,6 +214,28 @@ def notices() -> list[str]:
     return found
 
 
+def expiry_notices(accounts: list[dict]) -> list[str]:
+    """Tokens that have expired or expire within the warning period."""
+    found = []
+    for account in accounts:
+        expires = expiry.parse(account.get("expires"))
+        names = {"user": account["user"], "host": account["host"], "date": f"{expires:%Y-%m-%d}" if expires else ""}
+        if expiry.is_expired(expires):
+            found.append(
+                _("The token of {user} on {host} expired on {date}; sign in again in Git-Switch.").format(**names)
+            )
+        elif expiry.expires_soon(expires):
+            days = expiry.days_left(expires)
+            found.append(
+                ngettext(
+                    "The token of {user} on {host} expires on {date} (in {days} day); renew it in time in Git-Switch.",
+                    "The token of {user} on {host} expires on {date} (in {days} days); renew it in time in Git-Switch.",
+                    days,
+                ).format(days=days, **names)
+            )
+    return found
+
+
 def _refuse_secrets(*values: object) -> None:
     """Stop a write that would carry a token or private key to a server."""
     text = "\n".join(json.dumps(value, ensure_ascii=False) for value in values if value is not None)
@@ -234,8 +257,9 @@ def _refuse_restricted(host: str | None, repository: str, findings: list) -> Non
 def _call_tool(name: str, arguments: dict) -> object:
     if name == "list_github_accounts":
         result = {"accounts": core.describe_accounts()}
-        if notices():
-            result["notices"] = notices()
+        found = expiry_notices(result["accounts"]) + notices()
+        if found:
+            result["notices"] = found
         return result
     if name == "check_for_leaks":
         context, found = leaks.gather(), []

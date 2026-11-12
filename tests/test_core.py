@@ -4,10 +4,13 @@ import os
 import subprocess
 import tempfile
 import unittest
+import urllib.error
+from datetime import datetime, timedelta, timezone
+from email.message import Message
 from pathlib import Path
 from unittest import mock
 
-from gitswitch import core, forge, leaks, mcp, update
+from gitswitch import core, expiry, forge, leaks, mcp, update
 
 # Kept before any test replaces it with a fake.
 REAL_GATHER = leaks.gather
@@ -255,7 +258,16 @@ class GitLabTest(unittest.TestCase):
         self.addCleanup(self.dir.cleanup)
         self.keyring = {}
         user = {"username": "dana", "name": "Dana", "id": 42, "avatar_url": "https://a/x.png"}
-        self.api_get = mock.Mock(return_value=(user, {}))
+        self.token_info = {"name": "Git-Switch", "expires_at": "2026-12-31"}
+
+        def api_get(url, _authorization):
+            if url.endswith("/personal_access_tokens/self"):
+                if self.token_info is None:
+                    raise urllib.error.HTTPError(url, 403, "Forbidden", {}, None)
+                return self.token_info, {}
+            return user, {}
+
+        self.api_get = mock.Mock(side_effect=api_get)
         patches = [
             mock.patch.dict(os.environ, {"GH_CONFIG_DIR": self.dir.name, "XDG_CONFIG_HOME": self.dir.name}),
             mock.patch.object(forge, "store_token", lambda host, user, token: self.keyring.__setitem__((host, user), token)),
@@ -272,13 +284,29 @@ class GitLabTest(unittest.TestCase):
 
     def test_profile_comes_from_api_v4_with_a_bearer_token(self):
         self.assertEqual(self.account, core.Account("gitlab.com", "dana", True, forge.GITLAB))
-        self.api_get.assert_called_once_with("https://gitlab.com/api/v4/user", "Bearer glpat-secret")
+        self.assertEqual(self.api_get.call_args_list[0], mock.call("https://gitlab.com/api/v4/user", "Bearer glpat-secret"))
         self.assertEqual(forge.fetch_profile(self.account).name, "Dana")
         self.assertEqual(json.loads(forge.accounts_file().read_text())["gitlab.com"]["kind"], forge.GITLAB)
 
     def test_noreply_address(self):
         profile = core.Profile(valid=True, login="dana", user_id=42)
         self.assertEqual(core.noreply_email("gitlab.com", profile, forge.GITLAB), "42-dana@users.noreply.gitlab.com")
+
+    def test_expiry_comes_from_the_token_itself(self):
+        self.api_get.assert_any_call("https://gitlab.com/api/v4/personal_access_tokens/self", "Bearer glpat-secret")
+        end_of_year = datetime(2026, 12, 31, tzinfo=timezone.utc)
+        self.assertEqual(core.fetch_profile(self.account).expires, end_of_year)
+        # Remembered when the account was added, without the token.
+        stored = expiry.store_file().read_text()
+        self.assertIn("2026-12-31T00:00:00Z", stored)
+        self.assertNotIn("glpat-secret", stored)
+        self.token_info = {"name": "Git-Switch", "expires_at": None}
+        self.assertEqual(core.fetch_profile(self.account).expires, expiry.NEVER)
+        # A token that may not read its own details still works; its expiry is just unknown.
+        self.token_info = None
+        profile = core.fetch_profile(self.account)
+        self.assertTrue(profile.valid)
+        self.assertIsNone(profile.expires)
 
     def test_credential_helper_and_kinds_stay_apart(self):
         request = "protocol=https\nhost=gitlab.com\n"
@@ -322,6 +350,155 @@ class GitLabTest(unittest.TestCase):
             context = REAL_GATHER()
         self.assertEqual(context.hosts, {"gitlab.example.com"})
         self.assertIn("glpat-secret", context.tokens)
+
+
+class ExpiryTest(unittest.TestCase):
+    NOW = datetime(2026, 11, 12, 12, 0, tzinfo=timezone.utc)
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        english = gettext.NullTranslations()
+        patches = [
+            mock.patch.dict(os.environ, {"GH_CONFIG_DIR": self.dir.name, "XDG_CONFIG_HOME": self.dir.name}),
+            # The texts are compared in English, whatever the locale running the tests.
+            mock.patch.object(expiry, "_", english.gettext),
+            mock.patch.object(expiry, "ngettext", english.ngettext),
+            mock.patch.object(mcp, "_", english.gettext),
+            mock.patch.object(mcp, "ngettext", english.ngettext),
+        ]
+        for patcher in patches:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def describe(self, expires):
+        return expiry.describe(expires, lambda moment: f"{moment:%Y-%m-%d}", self.NOW)
+
+    def test_parse_the_formats_servers_send(self):
+        utc = timezone.utc
+        for text, expected in (
+            ("2026-12-31 08:15:00 UTC", datetime(2026, 12, 31, 8, 15, tzinfo=utc)),
+            ("2026-12-31 08:15:00 +0200", datetime(2026, 12, 31, 6, 15, tzinfo=utc)),
+            ("2026-12-31T08:15:00Z", datetime(2026, 12, 31, 8, 15, tzinfo=utc)),
+            ("2026-12-31T08:15:00-05:00", datetime(2026, 12, 31, 13, 15, tzinfo=utc)),
+            ("2026-12-31", datetime(2026, 12, 31, tzinfo=utc)),
+        ):
+            self.assertEqual(expiry.parse(text), expected, text)
+            self.assertEqual(expiry.parse(text).tzinfo, utc)
+        for text in ("", "   ", "soon", None, 42):
+            self.assertIsNone(expiry.parse(text), text)
+        self.assertEqual(expiry.to_iso(datetime(2026, 12, 31, 8, 15, tzinfo=utc)), "2026-12-31T08:15:00Z")
+        self.assertIsNone(expiry.to_iso(expiry.NEVER))
+        self.assertIsNone(expiry.to_iso(None))
+
+    def test_days_left_rounds_up(self):
+        hours = timedelta(hours=1)
+        self.assertEqual(expiry.days_left(self.NOW + 3 * hours, self.NOW), 1)
+        self.assertEqual(expiry.days_left(self.NOW + timedelta(days=10), self.NOW), 10)
+        self.assertEqual(expiry.days_left(self.NOW - 3 * hours, self.NOW), -1)
+        self.assertIsNone(expiry.days_left(expiry.NEVER, self.NOW))
+        self.assertIsNone(expiry.days_left(None, self.NOW))
+        self.assertTrue(expiry.is_expired(self.NOW, self.NOW))
+        self.assertFalse(expiry.is_expired(expiry.NEVER, self.NOW))
+
+    def test_describe(self):
+        days = timedelta(days=1)
+        self.assertEqual(self.describe(expiry.NEVER), ("No expiry date", "ok"))
+        self.assertIsNone(self.describe(None))
+        self.assertEqual(self.describe(self.NOW + 30 * days), ("Valid until 2026-12-12", "ok"))
+        self.assertEqual(self.describe(self.NOW + 15 * days), ("Valid until 2026-11-27", "ok"))
+        self.assertEqual(self.describe(self.NOW + 14 * days), ("Expires in 14 days", "warning"))
+        self.assertEqual(self.describe(self.NOW + timedelta(hours=2)), ("Expires in 1 day", "warning"))
+        self.assertEqual(self.describe(self.NOW - 2 * days), ("Expired on 2026-11-10", "expired"))
+        self.assertTrue(expiry.expires_soon(self.NOW + 7 * days, expiry.TOAST_DAYS, self.NOW))
+        self.assertFalse(expiry.expires_soon(self.NOW + 8 * days, expiry.TOAST_DAYS, self.NOW))
+        self.assertFalse(expiry.expires_soon(self.NOW - days, expiry.TOAST_DAYS, self.NOW))
+
+    def test_german_plural(self):
+        german = gettext.translation("gitswitch", CatalogTest.LOCALE_DIR, languages=["de"])
+        with mock.patch.object(expiry, "ngettext", german.ngettext):
+            self.assertEqual(self.describe(self.NOW + timedelta(hours=2))[0], "Läuft in 1 Tag ab")
+            self.assertEqual(self.describe(self.NOW + timedelta(days=3))[0], "Läuft in 3 Tagen ab")
+
+    def test_store_remembers_and_forgets(self):
+        moment = datetime(2026, 12, 31, tzinfo=timezone.utc)
+        expiry.remember("github.com", "alice", moment)
+        expiry.remember("github.com", "bob", expiry.NEVER)
+        expiry.remember("github.com", "carol", None)
+        self.assertEqual(expiry.recall("github.com", "alice"), moment)
+        self.assertEqual(expiry.recall("github.com", "bob"), expiry.NEVER)
+        self.assertIsNone(expiry.recall("github.com", "carol"))
+        self.assertEqual(expiry.store_file().stat().st_mode & 0o777, 0o600)
+        expiry.forget("github.com", "alice")
+        expiry.forget("github.com", "bob")
+        self.assertEqual(json.loads(expiry.store_file().read_text()), {})
+
+    def github(self, headers=None, error=None):
+        """Fetch the profile of alice with gh and the GitHub API replaced by fakes."""
+        message = Message()
+        for key, value in (headers or {}).items():
+            message[key] = value
+        api = mock.Mock(return_value=({"login": "alice", "id": 1}, message), side_effect=error)
+        token = mock.Mock(returncode=0, stdout="gho_secret\n")
+        with mock.patch.object(core, "_run", return_value=token), mock.patch.object(core, "api_get", api):
+            return core.fetch_profile(core.Account("github.com", "alice", True))
+
+    def test_github_header_and_remembered_expiry(self):
+        # Headers are case-insensitive; GitHub sends this one in lower case.
+        profile = self.github({"github-authentication-token-expiration": "2026-11-01 08:00:00 UTC"})
+        self.assertEqual(profile.expires, datetime(2026, 11, 1, 8, tzinfo=timezone.utc))
+        self.assertNotIn("gho_secret", expiry.store_file().read_text())
+        refused = urllib.error.HTTPError("https://api.github.com/user", 401, "Unauthorized", {}, None)
+        profile = self.github(error=refused)
+        self.assertFalse(profile.valid)
+        self.assertEqual(profile.expires, datetime(2026, 11, 1, 8, tzinfo=timezone.utc))
+        self.assertEqual(self.describe(profile.expires), ("Expired on 2026-11-01", "expired"))
+
+    def test_github_oauth_token_never_expires(self):
+        self.assertEqual(self.github().expires, expiry.NEVER)
+        self.assertEqual(expiry.recall("github.com", "alice"), expiry.NEVER)
+
+    def test_forgejo_tokens_have_no_expiry(self):
+        user = {"login": "dana", "id": 7}
+        with mock.patch.object(core, "api_get", return_value=(user, {})) as api:
+            profile = forge._profile("git.example.com", "dana", "s3cret", forge.FORGEJO)
+        self.assertEqual(profile.expires, expiry.NEVER)
+        api.assert_called_once()
+
+    def test_describe_accounts_and_logout(self):
+        moment = datetime.now(timezone.utc) + timedelta(days=5, hours=1)
+        profile = core.Profile(valid=True, login="alice", expires=moment)
+        account = core.Account("github.com", "alice", True)
+        with mock.patch.object(core, "list_accounts", return_value=[account]), \
+                mock.patch.object(core, "fetch_profile", return_value=profile):
+            entry = core.describe_accounts()[0]
+        self.assertEqual(entry["expires"], expiry.to_iso(moment))
+        self.assertEqual(entry["expires_in_days"], 6)
+        self.assertFalse(entry["never_expires"])
+        json.dumps(entry)
+        expiry.remember("github.com", "alice", moment)
+        with mock.patch.object(core, "_run"):
+            core.logout_account(account)
+        self.assertIsNone(expiry.recall("github.com", "alice"))
+
+    def test_mcp_notices(self):
+        now = datetime.now(timezone.utc)
+        accounts = [
+            {"user": "alice", "host": "github.com", "expires": expiry.to_iso(now - timedelta(days=2))},
+            {"user": "bob", "host": "github.com", "expires": expiry.to_iso(now + timedelta(days=3, hours=1))},
+            {"user": "carol", "host": "github.com", "expires": expiry.to_iso(now + timedelta(days=40))},
+            {"user": "dana", "host": "git.example.com", "expires": None},
+        ]
+        notices = mcp.expiry_notices(accounts)
+        self.assertEqual(len(notices), 2)
+        self.assertIn("alice on github.com expired on", notices[0])
+        self.assertIn("bob on github.com expires on", notices[1])
+        self.assertIn("(in 4 days)", notices[1])
+        with mock.patch.object(core, "describe_accounts", return_value=accounts), \
+                mock.patch.object(mcp, "notices", return_value=[]):
+            call = {"name": "list_github_accounts", "arguments": {}}
+            result = mcp.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": call})["result"]
+        self.assertEqual(json.loads(result["content"][0]["text"])["notices"], notices)
 
 
 class ApiTest(unittest.TestCase):

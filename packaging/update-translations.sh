@@ -4,7 +4,7 @@ set -eu
 cd "$(dirname "$0")/.."
 
 pot=gitswitch/locale/gitswitch.pot
-xgettext --language=Python --keyword=_ --from-code=UTF-8 --sort-by-file \
+xgettext --language=Python --keyword=_ --keyword=ngettext:1,2 --from-code=UTF-8 --sort-by-file \
     --package-name=gitswitch --msgid-bugs-address=https://github.com/SoulInfernoDE/gitswitch/issues \
     --output="$pot" gitswitch/*.py
 # Keep the template stable between runs.

@@ -31,6 +31,8 @@ heraus über den mitgelieferten MCP-Server.
 - Einzelne Konten abmelden
 - Zeigt die Berechtigungen (Scopes) jedes Tokens; hinzufügen oder entfernen per
   Häkchen in einer Liste mit Beschreibungen (`gh auth refresh`)
+- Zeigt, wie lange jedes Token gültig ist, mit Warnung kurz vor dem Ablauf
+  (siehe [Ablauf der Tokens](#ablauf-der-tokens))
 - Token eines Kontos in die Zwischenablage kopieren (`gh auth token`)
 - Pro Host: HTTPS oder SSH als Git-Protokoll wählen und gh als
   Git-Anmeldehelfer einrichten (`gh auth setup-git`)
@@ -58,14 +60,14 @@ Schlüsselbund (GNOME Keyring, KWallet o. Ä.).
 [Release-Seite](../../releases) herunterladen und installieren:
 
 ```bash
-sudo apt install ./gitswitch_0.6.2_all.deb
+sudo apt install ./gitswitch_0.7.0_all.deb
 ```
 
 **Andere Distributionen** – PyGObject, GTK 4 und libadwaita über den
 Paketmanager installieren, dann:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.6.2-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.7.0-py3-none-any.whl
 ```
 
 **Aus dem Quellcode** – `python3 -m gitswitch` in einem Checkout.
@@ -80,6 +82,36 @@ gitswitch leak-check      # prüfen, was der nächste Push veröffentlichen wür
 ```
 
 Die Sprache richtet sich nach der Systemsprache.
+
+## Ablauf der Tokens
+
+Jede Kontozeile zeigt, wann ihr Token abläuft:
+
+| Anzeige | Bedeutung |
+| --- | --- |
+| Gültig bis 31.12.2026 | Ablaufdatum im Datumsformat der Systemsprache |
+| Läuft in 5 Tagen ab | Noch 14 Tage oder weniger; die Zeile bekommt ein Warnzeichen |
+| Abgelaufen am 01.11.2026 | Das Token funktioniert nicht mehr; bitte neu anmelden |
+| Kein Ablaufdatum | Das Token läuft nicht ab |
+
+Läuft ein Token innerhalb von 7 Tagen ab, weist das Fenster beim Start einmal
+darauf hin.
+
+Woher das Datum kommt:
+
+- **GitHub** schickt es im Header `GitHub-Authentication-Token-Expiration` bei
+  persönlichen Zugriffstokens mit Ablaufdatum. Tokens aus der Browser-Anmeldung
+  von gh haben keins.
+- **GitLab** meldet es für das Token selbst (`GET /api/v4/personal_access_tokens/self`).
+  Darf das Token das nicht lesen, bleibt das Datum unbekannt und es wird nichts
+  angezeigt.
+- **Forgejo- und Gitea-Tokens** haben kein Ablaufdatum.
+
+Das zuletzt gesehene Datum bleibt pro Konto in `~/.config/gitswitch/expiry.json`
+gespeichert (ohne Tokens, nur für dich lesbar), damit ein abgelaufenes Token
+noch sagen kann, wann es abgelaufen ist. `gitswitch list` und der MCP-Server
+liefern für jedes Konto `expires` (UTC, ISO 8601), `expires_in_days` und
+`never_expires`.
 
 ## Forgejo, Gitea und GitLab
 
@@ -131,7 +163,7 @@ Danach Claude Code neu starten. Diese Tools stehen dann zur Verfügung:
 
 | Tool | Zweck |
 | --- | --- |
-| `list_github_accounts` | Alle Konten pro Host (GitHub, Forgejo, Gitea, GitLab), das aktive Konto, Token-Gültigkeit und Scopes |
+| `list_github_accounts` | Alle Konten pro Host (GitHub, Forgejo, Gitea, GitLab), das aktive Konto, Token-Gültigkeit, Ablaufdatum und Scopes; mit Hinweis, wenn ein Token innerhalb von 14 Tagen abläuft oder abgelaufen ist |
 | `switch_github_account` | Ein Konto aktivieren (`user`, optional `hostname`) |
 | `forgejo_api_get` | Aus der REST-API eines Forgejo-/Gitea-Servers lesen, wie `gh api` für GitHub |
 | `forgejo_api_write` | Über diese API etwas ändern: Issues, Pull Requests, Releases, Spiegel-Abgleich … |

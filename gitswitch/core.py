@@ -15,9 +15,10 @@ import threading
 import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
 
-from . import __version__
+from . import __version__, expiry
 from .i18n import _
 
 DEFAULT_HOST = "github.com"
@@ -43,6 +44,9 @@ class Profile:
     """Result of validating an account's token against the GitHub API.
 
     ``valid`` is ``None`` if the check itself failed (e.g. no network).
+    ``expires`` is when the token expires: an aware UTC datetime, ``expiry.NEVER``
+    or ``None`` if unknown. For a token that is not valid it is the last expiry
+    seen for the account, so an expired token can tell when it expired.
     """
 
     valid: bool | None
@@ -51,6 +55,7 @@ class Profile:
     user_id: int = 0
     avatar_url: str = ""
     scopes: list[str] = field(default_factory=list)
+    expires: datetime | str | None = None
 
 
 # --- running commands -------------------------------------------------------
@@ -194,11 +199,26 @@ def api_get(url: str, authorization: str) -> tuple[object, object]:
 
 
 def fetch_profile(account: Account) -> Profile:
-    """Check the stored token of ``account`` and fetch its public profile."""
+    """Check the stored token of ``account`` and fetch its public profile and token expiry."""
     if account.kind != "github":
         from . import forge
 
-        return forge.fetch_profile(account)
+        profile = forge.fetch_profile(account)
+    else:
+        profile = _github_profile(account)
+    return settle_expiry(account, profile)
+
+
+def settle_expiry(account: Account, profile: Profile) -> Profile:
+    """Remember the expiry of a valid token; give an unusable one the last expiry seen."""
+    if profile.valid:
+        expiry.remember(account.host, account.user, profile.expires)
+    elif profile.expires is None:
+        profile.expires = expiry.recall(account.host, account.user)
+    return profile
+
+
+def _github_profile(account: Account) -> Profile:
     proc = _run(["gh", "auth", "token", "--hostname", account.host, "--user", account.user], check=False)
     token = proc.stdout.strip()
     if proc.returncode != 0 or not token:
@@ -206,6 +226,8 @@ def fetch_profile(account: Account) -> Profile:
     try:
         data, headers = api_get(_api_url(account.host), f"Bearer {token}")
         scopes = headers.get("X-OAuth-Scopes", "")
+        # Only tokens with an expiry date carry this header; gh's OAuth tokens never expire.
+        expires = expiry.parse(headers.get("GitHub-Authentication-Token-Expiration")) or expiry.NEVER
     except urllib.error.HTTPError as error:
         return Profile(valid=False if error.code == 401 else None, login=account.user)
     except (OSError, ValueError):
@@ -217,6 +239,7 @@ def fetch_profile(account: Account) -> Profile:
         user_id=data.get("id") or 0,
         avatar_url=data.get("avatar_url") or "",
         scopes=[scope.strip() for scope in scopes.split(",") if scope.strip()],
+        expires=expires,
     )
 
 
@@ -419,8 +442,10 @@ def logout_account(account: Account) -> None:
     if account.kind != "github":
         from . import forge
 
-        return forge.logout(account)
-    _run(["gh", "auth", "logout", "--hostname", account.host, "--user", account.user])
+        forge.logout(account)
+    else:
+        _run(["gh", "auth", "logout", "--hostname", account.host, "--user", account.user])
+    expiry.forget(account.host, account.user)
 
 
 def get_token(account: Account) -> str:
@@ -443,7 +468,14 @@ def describe_accounts(check_tokens: bool = True) -> list[dict]:
         entry = asdict(account)
         if check_tokens:
             profile = fetch_profile(account)
-            entry.update(token_valid=profile.valid, name=profile.name, scopes=profile.scopes)
+            entry.update(
+                token_valid=profile.valid,
+                name=profile.name,
+                scopes=profile.scopes,
+                expires=expiry.to_iso(profile.expires),
+                expires_in_days=expiry.days_left(profile.expires),
+                never_expires=profile.expires == expiry.NEVER,
+            )
         described.append(entry)
     return described
 

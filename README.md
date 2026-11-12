@@ -31,6 +31,8 @@ through the bundled MCP server.
 - Sign out of single accounts
 - Shows the permissions (scopes) of each token; add or remove them by ticking
   boxes in a list with descriptions (`gh auth refresh`)
+- Shows how long each token stays valid, with a warning shortly before it
+  expires (see [Token expiry](#token-expiry))
 - Copy an account's token to the clipboard (`gh auth token`)
 - Per host: choose HTTPS or SSH as git protocol and set up gh as git
   credential helper (`gh auth setup-git`)
@@ -57,14 +59,14 @@ Forgejo, Gitea and GitLab accounts additionally need libsecret and a running key
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.6.2_all.deb
+sudo apt install ./gitswitch_0.7.0_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.6.2-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.7.0-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.
@@ -77,6 +79,33 @@ gitswitch list            # accounts as JSON
 gitswitch switch <user>   # switch from the shell
 gitswitch leak-check      # check what the next push would publish
 ```
+
+## Token expiry
+
+Each account row shows when its token expires:
+
+| Shown | Meaning |
+| --- | --- |
+| Valid until 31/12/2026 | Expiry date, in the date format of your locale |
+| Expires in 5 days | 14 days or less left; the row gets a warning sign |
+| Expired on 01/11/2026 | The token no longer works; sign in again |
+| No expiry date | The token does not expire |
+
+When a token expires within 7 days, the window also says so once on start.
+
+Where the date comes from:
+
+- **GitHub** sends it in the `GitHub-Authentication-Token-Expiration` header for
+  personal access tokens with an expiry date. Tokens from the browser sign-in of
+  gh have none.
+- **GitLab** reports it for the token itself (`GET /api/v4/personal_access_tokens/self`).
+  If the token may not read that, the date stays unknown and nothing is shown.
+- **Forgejo and Gitea** tokens have no expiry date.
+
+The last date seen is kept per account in `~/.config/gitswitch/expiry.json`
+(no tokens, readable only by you), so an expired token can still tell when it
+expired. `gitswitch list` and the MCP server include `expires` (UTC, ISO 8601),
+`expires_in_days` and `never_expires` for every account.
 
 ## Forgejo, Gitea and GitLab
 
@@ -126,7 +155,7 @@ Restart Claude Code afterwards. These tools become available:
 
 | Tool | Purpose |
 | --- | --- |
-| `list_github_accounts` | All accounts per host (GitHub, Forgejo, Gitea, GitLab), the active one, token validity and scopes |
+| `list_github_accounts` | All accounts per host (GitHub, Forgejo, Gitea, GitLab), the active one, token validity, expiry and scopes; adds a notice when a token expires within 14 days or has expired |
 | `switch_github_account` | Activate an account (`user`, optional `hostname`) |
 | `forgejo_api_get` | Read from the REST API of a Forgejo/Gitea server, like `gh api` for GitHub |
 | `forgejo_api_write` | Change things through that API: issues, pull requests, releases, mirror sync … |
