@@ -63,14 +63,14 @@ Forgejo, Gitea and GitLab accounts additionally need libsecret and a running key
 [releases page](../../releases) and install it:
 
 ```bash
-sudo apt install ./gitswitch_0.7.3_all.deb
+sudo apt install ./gitswitch_0.7.4_all.deb
 ```
 
 **Other distributions** – install PyGObject, GTK 4 and libadwaita from your
 package manager, then:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.7.3-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.7.4-py3-none-any.whl
 ```
 
 **From source** – `python3 -m gitswitch` inside a checkout.
@@ -185,7 +185,7 @@ that in content that is about to be published:
 
 | Severity | What is found |
 | --- | --- |
-| `secret` | The live tokens of the signed-in accounts, other access tokens, private keys |
+| `secret` | The live tokens of the signed-in accounts, other access tokens, private keys, references to your Forgejo servers outside Forgejo |
 | `private` | Addresses of your self-hosted servers, your real git e-mail address, paths in your home directory |
 | `review` | Other e-mail addresses, the computer name, private network addresses, internal host names |
 
@@ -200,6 +200,14 @@ The command exits with status 1 if it finds something, so it works as a git
 Forgejo write tools refuse requests that contain a secret. Entries listed
 under `leak_allow` in `~/.config/gitswitch/config.json` are ignored, for
 example a server that is meant to be public.
+
+Your Forgejo servers stay inside Forgejo: their host names and addresses
+(resolved when the check runs) may appear only in content for one of them,
+never on GitHub, GitLab or anywhere else, and `leak_allow` does not change
+that. A working copy counts as Forgejo content when its push target is one of
+your Forgejo servers; for text or files pass the target with
+`--destination` (or `destination` in `check_for_leaks`). The write tools refuse
+requests to other servers that mention them.
 
 You can also keep your own terms out of published content, for example the
 name of a tool you do not want credited, and allow them in exactly one

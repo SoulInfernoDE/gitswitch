@@ -64,14 +64,14 @@ Schlüsselbund (GNOME Keyring, KWallet o. Ä.).
 [Release-Seite](../../releases) herunterladen und installieren:
 
 ```bash
-sudo apt install ./gitswitch_0.7.3_all.deb
+sudo apt install ./gitswitch_0.7.4_all.deb
 ```
 
 **Andere Distributionen** – PyGObject, GTK 4 und libadwaita über den
 Paketmanager installieren, dann:
 
 ```bash
-pipx install --system-site-packages gitswitch-0.7.3-py3-none-any.whl
+pipx install --system-site-packages gitswitch-0.7.4-py3-none-any.whl
 ```
 
 **Aus dem Quellcode** – `python3 -m gitswitch` in einem Checkout.
@@ -195,7 +195,7 @@ Inhalten suchen, die veröffentlicht werden sollen:
 
 | Stufe | Was gefunden wird |
 | --- | --- |
-| `secret` | Die aktiven Tokens der angemeldeten Konten, andere Zugriffstokens, private Schlüssel |
+| `secret` | Die aktiven Tokens der angemeldeten Konten, andere Zugriffstokens, private Schlüssel, Hinweise auf deine Forgejo-Server außerhalb von Forgejo |
 | `private` | Adressen deiner selbst betriebenen Server, deine echte Git-E-Mail-Adresse, Pfade in deinem Home-Verzeichnis |
 | `review` | Andere E-Mail-Adressen, der Rechnername, private Netzwerkadressen, interne Hostnamen |
 
@@ -211,6 +211,14 @@ veröffentlicht, und die Forgejo-Schreib-Tools lehnen Anfragen ab, die ein
 Geheimnis enthalten. Einträge unter `leak_allow` in
 `~/.config/gitswitch/config.json` werden ignoriert, zum Beispiel ein Server,
 der öffentlich sein soll.
+
+Deine Forgejo-Server bleiben in Forgejo: Ihre Hostnamen und Adressen (beim
+Prüfen aufgelöst) dürfen nur in Inhalten für einen von ihnen stehen, nie auf
+GitHub, GitLab oder anderswo, und `leak_allow` ändert daran nichts. Eine
+Arbeitskopie zählt als Forgejo-Inhalt, wenn ihr Push-Ziel einer deiner
+Forgejo-Server ist; für Text oder Dateien gibst du das Ziel mit
+`--destination` an (oder `destination` bei `check_for_leaks`). Die
+Schreib-Tools lehnen Anfragen an andere Server ab, die sie erwähnen.
 
 Außerdem lassen sich eigene Begriffe aus veröffentlichten Inhalten
 heraushalten, zum Beispiel der Name eines Werkzeugs, das nicht genannt werden

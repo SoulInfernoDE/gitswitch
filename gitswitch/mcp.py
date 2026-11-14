@@ -158,7 +158,9 @@ TOOLS = [
             "Call it before committing, pushing, creating a release, opening an issue or pull request, or "
             "putting text into a README. Pass 'repository' to check what the next push would publish, "
             "'paths' for files or folders, or 'text' for a draft. Findings of severity 'secret' must be "
-            "removed; discuss 'private' and 'review' findings with the user instead of publishing them."
+            "removed; discuss 'private' and 'review' findings with the user instead of publishing them. "
+            "References to the user's Forgejo servers are allowed only in content for those servers: pass "
+            "'destination' (host or URL) when checking text or files for a Forgejo server."
         ),
         "inputSchema": {
             "type": "object",
@@ -168,6 +170,10 @@ TOOLS = [
                 "repository": {
                     "type": "string",
                     "description": _("Git working copy; checks staged changes and commits not yet on the upstream"),
+                },
+                "destination": {
+                    "type": "string",
+                    "description": _("Where 'text' or 'paths' will be published (host or URL); a repository uses its push target"),
                 },
             },
             "additionalProperties": False,
@@ -186,6 +192,12 @@ def instructions() -> str:
         "Before publishing anything on the user's behalf (commit, push, release, issue, pull request, README), "
         "run check_for_leaks on it and resolve the findings with the user."
     )
+    servers = sorted(set(leaks.gather().forgejo.values()))
+    if servers:
+        text += "\n" + _(
+            "Never refer to the Forgejo servers {servers} (host names, addresses, links, clone URLs) outside "
+            "Forgejo: not on GitHub, GitLab or any other site, and not in content that will be published there."
+        ).format(servers=", ".join(servers))
     rules = core.load_settings().get("restricted")
     terms = ", ".join(str(term) for term in (rules or {}).get("terms") or []) if isinstance(rules, dict) else ""
     if terms:
@@ -239,7 +251,7 @@ def expiry_notices(accounts: list[dict]) -> list[str]:
 def _refuse_secrets(*values: object) -> None:
     """Stop a write that would carry a token or private key to a server."""
     text = "\n".join(json.dumps(value, ensure_ascii=False) for value in values if value is not None)
-    secrets = [f for f in leaks.scan_text(text, "request") if f.severity == leaks.SECRET]
+    secrets = [f for f in leaks.scan_text(text, "request") if f.severity == leaks.SECRET and f.kind != "forgejo-server"]
     if secrets:
         raise core.GhError(_("Not sent: the request contains a secret ({detail})").format(detail=secrets[0].detail))
 
@@ -254,6 +266,13 @@ def _refuse_restricted(host: str | None, repository: str, findings: list) -> Non
         raise core.GhError(_("Not sent: {detail}").format(detail=restricted[0].detail))
 
 
+def _refuse_forgejo(host: str | None, findings: list) -> None:
+    """Keep the user's Forgejo servers out of every server that is not one of them."""
+    mentions = [f for f in findings if f.kind == "forgejo-server"]
+    if mentions and not leaks.is_forgejo_target(forge._api_account(host).host):
+        raise core.GhError(_("Not sent: {detail}").format(detail=mentions[0].detail))
+
+
 def _call_tool(name: str, arguments: dict) -> object:
     if name == "list_github_accounts":
         result = {"accounts": core.describe_accounts()}
@@ -263,6 +282,8 @@ def _call_tool(name: str, arguments: dict) -> object:
         return result
     if name == "check_for_leaks":
         context, found = leaks.gather(), []
+        if isinstance(arguments.get("destination"), str) and leaks.is_forgejo_target(arguments["destination"], context):
+            context.forgejo_target = True
         if isinstance(arguments.get("text"), str):
             found += leaks.scan_text(arguments["text"], "text", context)
         if isinstance(arguments.get("paths"), list):
@@ -279,9 +300,11 @@ def _call_tool(name: str, arguments: dict) -> object:
         text = {key: value for key, value in arguments.items() if isinstance(value, str)}
         host = text.get("hostname")
         if name == "forgejo_upload_release_asset":
-            if leaks.report(leaks.scan_paths([text.get("file", "")]))["counts"][leaks.SECRET]:
+            scanned = leaks.scan_paths([text.get("file", "")])
+            if any(f.severity == leaks.SECRET and f.kind != "forgejo-server" for f in scanned):
                 raise core.GhError(_("Not sent: the file contains a secret."))
-            _refuse_restricted(host, text.get("repository", ""), leaks.scan_paths([text.get("file", "")]))
+            _refuse_restricted(host, text.get("repository", ""), scanned)
+            _refuse_forgejo(host, scanned)
             return forge.upload_release_asset(text.get("repository", ""), text.get("tag", ""), text.get("file", ""), host)
         kind = forge.GITLAB if name.startswith("gitlab_") else forge.FORGEJO
         if host and forge.host_kind(host) in forge.KINDS and host in {a.host for a in forge.list_accounts()}:
@@ -295,6 +318,9 @@ def _call_tool(name: str, arguments: dict) -> object:
             target = re.match(r"/repos/([^/?]+/[^/?]+)", text.get("path", ""))
             body = json.dumps(arguments.get("body"), ensure_ascii=False) if arguments.get("body") is not None else ""
             _refuse_restricted(host, target.group(1) if target else "", leaks.scan_text(body, "request"))
+        if name.endswith("_api_write"):
+            body = json.dumps(arguments.get("body"), ensure_ascii=False) if arguments.get("body") is not None else ""
+            _refuse_forgejo(host, leaks.scan_text(body, "request"))
         return forge.api(method, text.get("path", ""), arguments.get("body"), host, kind)
     raise core.GhError(_("Unknown tool: {name}").format(name=name))
 

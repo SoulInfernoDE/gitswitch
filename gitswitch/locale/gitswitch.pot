@@ -46,19 +46,23 @@ msgid "check what the next push of this working copy would publish"
 msgstr ""
 
 #: gitswitch/__main__.py:26
+msgid "where the files will be published (host or URL)"
+msgstr ""
+
+#: gitswitch/__main__.py:27
 msgid "answer git's credential requests for Forgejo accounts"
 msgstr ""
 
-#: gitswitch/__main__.py:47 gitswitch/__main__.py:61
+#: gitswitch/__main__.py:49 gitswitch/__main__.py:63
 #, python-brace-format
 msgid "gitswitch: {error}"
 msgstr ""
 
-#: gitswitch/__main__.py:52
+#: gitswitch/__main__.py:54
 msgid "No private data found."
 msgstr ""
 
-#: gitswitch/__main__.py:52
+#: gitswitch/__main__.py:54
 #, python-brace-format
 msgid "{count} finding(s)."
 msgstr ""
@@ -293,7 +297,7 @@ msgstr ""
 msgid "Request to {host} failed: {detail}"
 msgstr ""
 
-#: gitswitch/forge.py:225 gitswitch/mcp.py:292
+#: gitswitch/forge.py:225 gitswitch/mcp.py:315
 #, python-brace-format
 msgid "Unsupported method: {method}"
 msgstr ""
@@ -751,78 +755,85 @@ msgstr ""
 msgid "MCP server removed from Claude Code"
 msgstr ""
 
-#: gitswitch/leaks.py:133
+#: gitswitch/leaks.py:175
 #, python-brace-format
 msgid "The token currently stored for {account}."
 msgstr ""
 
-#: gitswitch/leaks.py:137
+#: gitswitch/leaks.py:179
 msgid "Looks like an access token."
 msgstr ""
 
-#: gitswitch/leaks.py:139
+#: gitswitch/leaks.py:181
 msgid "A private key."
 msgstr ""
 
-#: gitswitch/leaks.py:143
+#: gitswitch/leaks.py:187
+#, python-brace-format
+msgid ""
+"A reference to your Forgejo server {host}. It may only appear in content for "
+"your Forgejo servers, never on GitHub, GitLab or elsewhere."
+msgstr ""
+
+#: gitswitch/leaks.py:192
 #, python-brace-format
 msgid "Address of your self-hosted server {host}."
 msgstr ""
 
-#: gitswitch/leaks.py:147
+#: gitswitch/leaks.py:196
 msgid "Your real git e-mail address."
 msgstr ""
 
-#: gitswitch/leaks.py:149
+#: gitswitch/leaks.py:198
 msgid "An e-mail address; check that it is meant to be public."
 msgstr ""
 
-#: gitswitch/leaks.py:151
+#: gitswitch/leaks.py:200
 msgid "A path inside your home directory; it reveals your user name."
 msgstr ""
 
-#: gitswitch/leaks.py:153
+#: gitswitch/leaks.py:202
 msgid "The name of this computer."
 msgstr ""
 
-#: gitswitch/leaks.py:160
+#: gitswitch/leaks.py:209
 msgid "An address from a private network."
 msgstr ""
 
-#: gitswitch/leaks.py:162
+#: gitswitch/leaks.py:211
 msgid "A host name from an internal network."
 msgstr ""
 
-#: gitswitch/leaks.py:166
+#: gitswitch/leaks.py:215
 #, python-brace-format
 msgid "An attribution line naming {term}."
 msgstr ""
 
-#: gitswitch/leaks.py:168
+#: gitswitch/leaks.py:217
 #, python-brace-format
 msgid "A mention of {term}."
 msgstr ""
 
-#: gitswitch/leaks.py:176
+#: gitswitch/leaks.py:233
 #, python-brace-format
 msgid "This belongs only in {repository}."
 msgstr ""
 
-#: gitswitch/leaks.py:177
+#: gitswitch/leaks.py:234
 msgid "This is not meant to be published."
 msgstr ""
 
-#: gitswitch/leaks.py:184
+#: gitswitch/leaks.py:241
 #, python-brace-format
 msgid "A file on your restricted list ({term})."
 msgstr ""
 
-#: gitswitch/leaks.py:202
+#: gitswitch/leaks.py:259
 #, python-brace-format
 msgid "{path} does not exist."
 msgstr ""
 
-#: gitswitch/leaks.py:252
+#: gitswitch/leaks.py:309
 #, python-brace-format
 msgid "{path} is not a git repository."
 msgstr ""
@@ -938,60 +949,76 @@ msgid ""
 "or putting text into a README. Pass 'repository' to check what the next push "
 "would publish, 'paths' for files or folders, or 'text' for a draft. Findings "
 "of severity 'secret' must be removed; discuss 'private' and 'review' "
-"findings with the user instead of publishing them."
+"findings with the user instead of publishing them. References to the user's "
+"Forgejo servers are allowed only in content for those servers: pass "
+"'destination' (host or URL) when checking text or files for a Forgejo server."
 msgstr ""
 
-#: gitswitch/mcp.py:166
+#: gitswitch/mcp.py:168
 msgid "Text to check, for example a draft README or message"
 msgstr ""
 
-#: gitswitch/mcp.py:167
+#: gitswitch/mcp.py:169
 msgid "Files or folders to check"
 msgstr ""
 
-#: gitswitch/mcp.py:170
+#: gitswitch/mcp.py:172
 msgid ""
 "Git working copy; checks staged changes and commits not yet on the upstream"
 msgstr ""
 
-#: gitswitch/mcp.py:186
+#: gitswitch/mcp.py:176
+msgid ""
+"Where 'text' or 'paths' will be published (host or URL); a repository uses "
+"its push target"
+msgstr ""
+
+#: gitswitch/mcp.py:192
 msgid ""
 "Before publishing anything on the user's behalf (commit, push, release, "
 "issue, pull request, README), run check_for_leaks on it and resolve the "
 "findings with the user."
 msgstr ""
 
-#: gitswitch/mcp.py:193
+#: gitswitch/mcp.py:198
+#, python-brace-format
+msgid ""
+"Never refer to the Forgejo servers {servers} (host names, addresses, links, "
+"clone URLs) outside Forgejo: not on GitHub, GitLab or any other site, and "
+"not in content that will be published there."
+msgstr ""
+
+#: gitswitch/mcp.py:205
 #, python-brace-format
 msgid ""
 "Do not mention {terms} in anything you publish, and add no Co-Authored-By or "
 "'Generated with' lines naming them."
 msgstr ""
 
-#: gitswitch/mcp.py:197
+#: gitswitch/mcp.py:209
 #, python-brace-format
 msgid "Such notes belong only in the repository {repository}."
 msgstr ""
 
-#: gitswitch/mcp.py:207
+#: gitswitch/mcp.py:219
 #, python-brace-format
 msgid ""
 "Git-Switch was updated to {version}; restart the client so this MCP server "
 "runs the new version."
 msgstr ""
 
-#: gitswitch/mcp.py:213
+#: gitswitch/mcp.py:225
 #, python-brace-format
 msgid "Git-Switch {version} is available: {url}"
 msgstr ""
 
-#: gitswitch/mcp.py:225
+#: gitswitch/mcp.py:237
 #, python-brace-format
 msgid ""
 "The token of {user} on {host} expired on {date}; sign in again in Git-Switch."
 msgstr ""
 
-#: gitswitch/mcp.py:231
+#: gitswitch/mcp.py:243
 #, python-brace-format
 msgid ""
 "The token of {user} on {host} expires on {date} (in {days} day); renew it in "
@@ -1002,43 +1029,43 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: gitswitch/mcp.py:244
+#: gitswitch/mcp.py:256
 #, python-brace-format
 msgid "Not sent: the request contains a secret ({detail})"
 msgstr ""
 
-#: gitswitch/mcp.py:254
+#: gitswitch/mcp.py:266 gitswitch/mcp.py:273
 #, python-brace-format
 msgid "Not sent: {detail}"
 msgstr ""
 
-#: gitswitch/mcp.py:276
+#: gitswitch/mcp.py:297
 msgid "'user' is required"
 msgstr ""
 
-#: gitswitch/mcp.py:283
+#: gitswitch/mcp.py:305
 msgid "Not sent: the file contains a secret."
 msgstr ""
 
-#: gitswitch/mcp.py:299
+#: gitswitch/mcp.py:325
 #, python-brace-format
 msgid "Unknown tool: {name}"
 msgstr ""
 
-#: gitswitch/mcp.py:334
+#: gitswitch/mcp.py:360
 #, python-brace-format
 msgid "Internal error: {detail}"
 msgstr ""
 
-#: gitswitch/mcp.py:337
+#: gitswitch/mcp.py:363
 msgid "[Result cut off; narrow the request or use ?limit= and ?page=.]"
 msgstr ""
 
-#: gitswitch/mcp.py:339
+#: gitswitch/mcp.py:365
 #, python-brace-format
 msgid "Method not found: {method}"
 msgstr ""
 
-#: gitswitch/mcp.py:351
+#: gitswitch/mcp.py:377
 msgid "Parse error"
 msgstr ""

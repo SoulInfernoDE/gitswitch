@@ -651,6 +651,45 @@ class LeakTest(unittest.TestCase):
             found = leaks.report(leaks.scan_repository(directory, self.context))["findings"]
         self.assertEqual({f["kind"] for f in found}, {"private-server", "own-email"})
 
+    def forgejo(self):
+        self.context.forgejo = {"forge.example.net": "forge.example.net", "203.0.113.7": "forge.example.net",
+                                "2001:db8::7": "forge.example.net"}
+
+    def test_forgejo_server_is_never_allowed_outside_forgejo(self):
+        self.forgejo()
+        self.context.allow = ["forge.example.net"]
+        for text in ("clone https://forge.example.net/dana/x.git", "ssh git@203.0.113.7", "http://[2001:db8::7]:3000/"):
+            found = leaks.scan_text(text, "t", self.context)
+            self.assertIn(("forgejo-server", leaks.SECRET), [(f.kind, f.severity) for f in found], text)
+        for text in ("forge.example.network", "203.0.113.70", "sub.forge.example.netty", "2001:db8::77"):
+            self.assertNotIn("forgejo-server", self.kinds(text), text)
+
+    def test_forgejo_server_is_fine_for_forgejo(self):
+        self.forgejo()
+        for target in ("forge.example.net", "https://forge.example.net/dana/x", "git@forge.example.net:dana/x.git",
+                       "forge.example.net:3000", "forge.example.net/dana/x"):
+            self.assertTrue(leaks.is_forgejo_target(target, self.context), target)
+        for target in ("github.com/dana/x", "https://gitlab.com/dana/x", "git.example.com", ""):
+            self.assertFalse(leaks.is_forgejo_target(target, self.context), target)
+        self.context.forgejo_target = True
+        self.assertEqual(self.kinds("https://forge.example.net/dana/x"), [])
+
+    def test_repository_scan_allows_forgejo_only_when_pushing_there(self):
+        self.forgejo()
+        with tempfile.TemporaryDirectory() as directory:
+            def git(*args):
+                env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull}
+                core.subprocess.run(["git", "-C", directory, *args], check=True, capture_output=True, env=env)
+
+            git("init", "-q")
+            Path(directory, "README.md").write_text("Mirror: https://forge.example.net/dana/x\n")
+            git("add", "-A")
+            git("-c", "user.name=Dana", "-c", "user.email=d@example.com", "commit", "-q", "-m", "init")
+            git("remote", "add", "origin", "https://github.com/dana/x.git")
+            self.assertEqual({f.kind for f in leaks.scan_repository(directory, self.context)}, {"forgejo-server"})
+            git("remote", "set-url", "origin", "https://forge.example.net/dana/x.git")
+            self.assertEqual(leaks.scan_repository(directory, self.context), [])
+
     def restrict(self, repository="git.example.com/dana/notes"):
         rules = {"terms": ["Acme", "Wile E."], "files": ["ACME.md", ".acme"], "repository": repository}
         leaks._restricted_settings(self.context, {"restricted": rules})
